@@ -1,0 +1,125 @@
+QA Hackathon 2013 12 april 2013 morning session about DBI & DBD changes and
+additions regarding the test suite.
+
+Notes taken by Wendy van Dijk (woolfy)
+
+Attendees:
+Merijn Brand     (Tux)
+Peter Rabbitson  (ribasushi)
+Kenichi Ishigaki (charsbar)
+Jens Rehsack     (Sno)
+Olivier Mengué   (dolmen)
+Joakim Tørmoen   (trmjoa)
+
+Tux takes the lead, this is his idea.
+
+DBI				DBD::*
+(t/s)		DBI::Test	(t/s)
+		
+		( 1:n )
+		( * )
+ 
+(t/s = testsuite)
+(extremely overly simplified!)
+
+Next to DBI, what modules use it how?
+Make a list of DBD-interfaces that your programs, your DBD-module, or
+your test module is supporting. Like: it supports MySQL and PostgreSQL
+and it definitely does not support CVS.
+
+Tux: 
+Testing scope with variations (partly generated)
+
+* Default suite
+* Pure Perl
+* XS
+* proxies / gopher
+* sql statement / sql nano
+
+Interface on top has to be both dynamic in detection for testing, both
+the DBI and DBD way & dynamic: do I support all of the matrix or not
+
+Discuss unicode too?  
+ Out of scope for now.
+
+Different DSN's too?
+ Definitely yes.
+
+What does DBI test for itself?  It should test its own SYNOPSIS, not
+all of the core docs of DBI are now tested in DBD test suites, just
+part that are created/copied into the DBD test suite.
+
+Riba: can we also focus on other things, like data type round tests,
+table info.
+
+Tux: there will be a lot overlapping
+We have to make something general for DBI and then the DBD authors
+need to use it, be able to use it, wanting to use it, and we don't
+know yet if they want and will use it.
+
+First: an interface to select what interface to test on.
+
+RunTest (param1, param2, ... paramn)
+	 ------------	 ----------
+			*
+
+--8<--- foo.t
+use 5.016;
+use_ok ("DBI::Test");
+init_dbi (%config);
+run_tests_ok ("This test description text");
+-->8---
+
+Some of this must be in the Makefile.PL, some in the init-file.
+
+the use_ok and init parts should be located in Makefile.PL or Build.PL
+because they will *GENERATE* the test files to be used in 'make test'
+
+So this can live in the Makefile.
+
+Configuration of the DSN's (and maybe more stuff) is to be done in
+a configuration file in the module's root folder in JSON format
+(optional support for YAML as possibility). How those will convert
+into perl structures/hashes/List-Of_Hashes, ... is of later worry.
+
+As DBI::Test will be generating tests, the *source* of the tests files
+will have to be stored somewhere when DBI::Test is installed (before
+DBI or DBD::* is installed - they depend on DBI::Test). File::ShareDir
+is *NOT* an option, as it has unwanted dependencies not in CORE. Do we
+prefer (big) .pm files or other means of resource storage? They need
+to be in the perl tree under site_perl somewhere.
+
+For now a 5-line pure-perl snippet can be used to emulate ShareDir and
+add Windows support when we get something working. File::ConfigDir
+might be worth stealing from.
+
+Do we want to supper $ perl -MDBI::Test -e.... and if so, what would
+it do?
+
+The scope of DBI::Test will be the SYNOPSIS of DBI
+As a start we should have a minimal test suite for
+* connect
+* disconnect
+* do
+* prepare
+* execute
+* fetch
+* finish
+
+Work from there to add every possible documented method and method
+form from the SYNOPSIS.
+
+DBD::Mock should come in later to allow SQL-only tests
+
+Who does what?
+riba & sno start with DBI
+Tux wants to pick somebody (like the people who said they don't have a
+project yet) to make individual tests. Joakim wants to start with this.
+Sno starts with DBI::Test
+
+Sno: do we have non-sql-dbd's like Adabas?
+Others: not yet
+
+Sno: we do need DBD::Mock but we don't need a DBD::Mock-driver
+my %conf t
+DBI->connect ($conf{whatever}, ...

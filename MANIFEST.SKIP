@@ -1,0 +1,6 @@
+blib/
+cover_db/
+sandbox/
+tmp/
+MANIFEST.SKIP
+pm_to_blib
