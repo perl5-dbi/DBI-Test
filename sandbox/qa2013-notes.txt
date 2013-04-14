@@ -1,6 +1,41 @@
-QA Hackathon 2013 12 april 2013 morning session about DBI & DBD changes and
-additions regarding the test suite.
+QA Hackathon 2013 session notes
 
+Sat, 13 Apr 2013
+---------------------------------------------------------------------------
+Use of File::ShareDir is unneeded when test-groups are stored in .pm's, like
+lib/DBI/Test/001.pm (or whatever naming scheme is used). That way the groups
+are easy maintainable, easy to document and easy to distribute
+
+The test suite *will* eventually be called in a matrix-style duplication,
+like defaul, again with pure-perl, again with gopher etc etc
+For a *start* we will be doing the default only, keeping the duplication in
+mind because we want/need something runnable as early as possible to be able
+to test against DBD's and get *feedback* to see if our approach will
+actually work.
+
+The tests, as Joakim started, are a great start, but we will need the info
+returned by the database most early to be able to build database specific
+valid SQL statement that can be checked against DBI. This means we want to
+test type_info and type_info_all early.
+
+DBI::Test will include a DBI::Mock to serve two purposes: 1. be able to
+test DBI::Test against itself, and 2. Have a test base for DBI related
+modules the do not actually use a DBI but do support its API. DBI::Mock
+will be subclassable.
+
+In order to have a fail-safe way to test success against failure, we define
+any statement used in the SQL area that starts with FAIL to be guaranteed
+to return failure. "FAIL a from b where c = 1" is invalid.
+
+Riba will guide Joakim in the test framework
+Jens will do the DBI::Mock
+Merijn will try to come to Niederrhein.pm for an extra day of hacking when
+pieces of the puzzle starts needing placement. If Tim is in Europe, we should
+try to combine these events.
+
+Fri, 12 Apr 2013
+---------------------------------------------------------------------------
+morning session about DBI & DBD changes and additions regarding the test suite.
 Notes taken by Wendy van Dijk (woolfy)
 
 Attendees:
