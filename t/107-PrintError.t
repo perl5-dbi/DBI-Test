@@ -36,7 +36,7 @@ my %methods = (
   TODO : {
     local $TODO = "Need to make dbh methods fail";
     while( my ($dbh_method, $dbh_args) = each %{ $methods{dbh} } ){
-      ok(!$dbh->$dbh_method( @{$dbh_args} ), $dbh->methods . ' fails');
+      ok(!$dbh->$dbh_method( @{$dbh_args} ), '$dbh->' . $dbh_method . '() fails');
     }
   }
   cmp_ok(scalar(@warnings), '==', scalar(keys %{ $methods{dbh} }), 'Recorded ' . scalar( keys %{ $methods{dbh} }) . ' warnings');
@@ -61,7 +61,7 @@ my %methods = (
   TODO : {
     local $TODO = "Need to make sth methods fail";
     while( my ($sth_method, $sth_args) = each %{ $methods{sth} } ){
-      ok($sth->$sth_method( @{ $sth_args } ), $sth_method . ' fails');
+      ok($sth->$sth_method( @{ $sth_args } ), '$sth->' . $sth_method . '() fails');
     }
   }
   cmp_ok(scalar(@warnings), '==', scalar( keys %{ $methods{sth} }), 'Recorded ' . scalar( keys %{ $methods{sth} }) . ' warnings');
