@@ -62,7 +62,7 @@ my %SQLS = (
     
     #TODO, make this more portable
     my $dsn = $DB_CREDS[0];
-    $dsn =~ s/(dbi:[A-Za-z_\-0-9]+::).+/$1/; $dsn .= "invalid_db";
+    #$dsn =~ s/(dbi:[A-Za-z_\-0-9]+::).+/$1/; $dsn .= "invalid_db";
     
     #PrintError is on by default, so we should check that we can intercept a warning
     my $warnings = 0;
