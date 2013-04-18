@@ -1,5 +1,34 @@
 QA Hackathon 2013 session notes
 
+Mon, 15 Apr 2013
+---------------------------------------------------------------------------
+IRC feedback from Tim Bunce:
+
+<[Tux]>    timbunce_, we need your opinion on what to do with the DBI docs
+           and the underlying warnings
+           DBI states to respect $^W (global), but not in relation to
+           use warnings (lexical) when we write checks we should know
+           and we also need a guide(line) for XS parts of the DBD in how to
+           write warnings macros/warn/printf (stderr, …) and all of that
+           in relation to what PrintWarn should do or don't
+<timbunce> The PrintWarn attribute relates to warnings coming from the db
+           'server' (not the driver), i.e., indicated by the driver setting
+           err to "0".
+           The default behaviour via $^W seems okay - it's just a default -
+           anyone who cares can set it explicitly.  Warnings from the DBD
+           are different and are controlled via the Warn attribute, which
+           defaults to on.
+           The intent is that such warnings would be rare and related to
+           errors in usage, and that the Warn attribute could be used to
+           disable them if the calling code couldn't be fixed to avoid 
+           triggering the warning.
+<[Tux]>    thanks for the explanation
+        *  wonders if the driver authors read that this way
+<timbunce> So warnings from the server are handled via set_err. Warnings
+	   from drivers are just: if (DBIc_WARN(h)) warn("…")
+	   feel free to add words to the docs (DBI.pm and DBI/DBD.pm) and
+	   I'll review
+
 Sat, 13 Apr 2013
 ---------------------------------------------------------------------------
 Use of File::ShareDir is unneeded when test-groups are stored in .pm's, like
