@@ -5,6 +5,10 @@ use ExtUtils::MakeMaker;
 
 use lib qw(lib);
 use DBI::Test::Conf ();
+use File::Find;
+
+my @t_files;
+find (sub { m/\.t$/ and push @t_files, $File::Find::name }, qw( t xt ));
 
 my %eumm_opt = (
     MIN_PERL_VERSION => '5.008001',
@@ -28,7 +32,7 @@ my %eumm_opt = (
     LICENSE          => 'perl',
     AUTHOR           => 'The DBI team <dbi-dev@perl.org>',
     test             => {
-	TESTS           => 't/*.t xt/*.t',
+	TESTS           => join (" " => @t_files),
 	},
     );
 
