@@ -28,7 +28,7 @@ my %eumm_opt = (
     LICENSE          => 'perl',
     AUTHOR           => 'The DBI team <dbi-dev@perl.org>',
     test             => {
-	TESTS           => 'xt/*.t',
+	TESTS           => join (' ' => 'xt/*.t', DBI::Test::Conf->setup ()),
 	},
     );
 
@@ -45,7 +45,6 @@ my %eumm_opt = (
     $eumm_version < 6.31 and delete $eumm_opt{LICENSE};
     }
 
-$eumm_opt{test}->{TESTS} = join( " ", $eumm_opt{test}->{TESTS}, DBI::Test::Conf->setup());
 WriteMakefile (%eumm_opt);
 
 package MY;
