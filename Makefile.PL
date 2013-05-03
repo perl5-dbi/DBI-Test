@@ -3,6 +3,9 @@ use strict;
 use warnings;
 use ExtUtils::MakeMaker;
 
+use lib qw(lib);
+use DBI::Test::Conf ();
+
 my %eumm_opt = (
     MIN_PERL_VERSION => '5.008001',
     META_MERGE       => {
@@ -42,6 +45,7 @@ my %eumm_opt = (
     $eumm_version < 6.31 and delete $eumm_opt{LICENSE};
     }
 
+DBI::Test::Conf->setup();
 WriteMakefile (%eumm_opt);
 
 package MY;
