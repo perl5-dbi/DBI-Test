@@ -3,28 +3,44 @@ package DBI::Test::Conf;
 use strict;
 use warnings;
 
+use Carp qw(croak);
 use Config;
 
-use Module::Pluggable::Object;
+use Cwd ();
+use File::Basename ();
+use File::Path ();
+use File::Spec ();
 
-my $plugins;
+use Module::Pluggable::Object ();
 
-sub plugins
+my $cfg_plugins;
+
+sub cfg_plugins
 {
-    defined $plugins and return @{$plugins};
+    defined $cfg_plugins and return @{$cfg_plugins};
 
     my $finder = Module::Pluggable::Object->new(
-                                                 search_dir => "DBI::Test",
+                                                 search_path => ["DBI::Test"],
+						 require    => 1,
                                                  only       => qr/::Conf$/,
                                                  inner      => 0
                                                );
     my @plugs = grep { $_->isa("DBI::Test::Conf") } $finder->plugins();
-    $plugins = \@plugs;
+    $cfg_plugins = \@plugs;
 
-    return @{$plugins};
+    return @{$cfg_plugins};
 }
 
 my %conf = (
+    default => {
+	category => undef,
+	cat_abbrev => "",
+	abbrev => "",
+	prefix => "", # XXX kick it out when we calculate the prefixes
+	init_stub => "",
+	match => ".*",
+	name => "Unmodified Test",
+    },
     #    ...
     #    p => {	name => "DBI::PurePerl",
     #	    match => qr/^\d/,
@@ -39,13 +55,44 @@ sub allconf
 {
     my ($self)  = @_;
     my %allconf = $self->conf();
-    my @plugins = $self->plugins();
+    my @plugins = $self->cfg_plugins();
     foreach my $plugin (@plugins)
     {
         # Hash::Merge->merge( ... )
 	%allconf = ( %allconf, $plugin->conf() );
     }
     return %allconf;
+}
+
+my $tc_plugins;
+
+sub tc_plugins
+{
+    defined $tc_plugins and return @{$tc_plugins};
+
+    my $finder = Module::Pluggable::Object->new(
+                                                 search_path => ["DBI::Test"],
+						 require    => 1,
+                                                 only       => qr/::List$/,
+                                                 inner      => 0
+                                               );
+    my @plugs = grep { $_->isa("DBI::Test::List") } $finder->plugins();
+    $tc_plugins = \@plugs;
+
+    return @{$tc_plugins};
+}
+
+sub alltests
+{
+    my ($self)  = @_;
+    my @alltests;
+    my @plugins = $self->tc_plugins();
+    foreach my $plugin (@plugins)
+    {
+        # Hash::Merge->merge( ... )
+	@alltests = ( @alltests, $plugin->test_cases() );
+    }
+    return @alltests;
 }
 
 sub combine_nk
@@ -79,88 +126,48 @@ sub combine_nk
     return @result;
 }
 
+sub create_test
+{
+    my ($self, $test_case, $test_conf) = @_;
+
+    my $test_file = $test_case;
+    $test_file =~ s,::,/,g;
+    $test_file = File::Spec->catfile("t", $test_file . ".t" );
+    my $test_dir = File::Basename::dirname($test_file);
+
+    $test_file = File::Basename::basename($test_file);
+    $test_file = $test_conf->{prefix} . $test_file;
+    $test_file = File::Spec->catfile($test_dir, $test_file);
+
+    -d $test_dir or File::Path::make_path($test_dir);
+    open(my $tfh, ">", $test_file) or croak("Cannot open \"$test_file\": $!");
+    my $test_case_code = <<EOC;
+#!$^X\n"
+
+$test_conf->{init_stub}
+
+use ${test_case};
+
+${test_case}->run_test;
+EOC
+
+    print $tfh "$test_case_code\n";
+    close($tfh);
+}
+
 sub populate_tests
 {
     my ( $self, $alltests, $allconf ) = @_;
-    my %test_variants;
 
-    # decide what needs doing
-    while ( my ( $test_name, $test_variant ) = each( %{ $allconf->{test_variants} } ) )
+    foreach my $conf (values %$allconf)
     {
-        $test_variant->{disabled} and next;
-        $test_variants{$test_name} = $test_variant;
+	foreach my $test (@$alltests)
+	{
+	    $self->create_test($test, $conf);
+	}
     }
 
-    # expand for all combinations
-    my @all_keys = ();
-    my @tv_keys = (); #sort map { } ...;
-    join( "v", values %test_variants );
-    while (@tv_keys)
-    {
-        my $cur_key = shift @tv_keys;
-        last if ( 1 < length $cur_key );
-        my @new_keys;
-        foreach my $remain (@tv_keys)
-        {
-            push @new_keys, $cur_key . $remain unless $remain =~ /$cur_key/;
-        }
-        push @tv_keys,  @new_keys;
-        push @all_keys, @new_keys;
-    }
-
-    my %uniq_keys;
-    foreach my $key (@all_keys)
-    {
-        @tv_keys = sort split //, $key;
-        my $ordered = join( '', @tv_keys );
-        $uniq_keys{$ordered} = 1;
-    }
-    @all_keys = sort { length $a <=> length $b or $a cmp $b } keys %uniq_keys;
-
-    # do whatever needs doing
-    if ( keys %test_variants )
-    {
-        # XXX need to convert this to work within the generated Makefile
-        # so 'make' creates them and 'make clean' deletes them
-        opendir DIR, 't' or die "Can't read 't' directory: $!";
-        my @tests = grep { /\.t$/ } readdir DIR;
-        closedir DIR;
-
-        foreach my $test_combo (@all_keys)
-        {
-            @tv_keys = split //, $test_combo;
-            my @test_names = map { $test_variants{$_}->{name} } @tv_keys;
-            printf "Creating test wrappers for " . join( " + ", @test_names ) . ":\n";
-            my @test_matches = map { $test_variants{$_}->{match} } @tv_keys;
-            my @test_adds;
-            foreach my $test_add ( map { $test_variants{$_}->{add} } @tv_keys )
-            {
-                push @test_adds, @$test_add;
-            }
-            my $v_type = $test_combo;
-            $v_type = 'x' . $v_type if length($v_type) > 1;
-
-          TEST:
-            foreach my $test ( sort @tests )
-            {
-                foreach my $match (@test_matches)
-                {
-                    next TEST if $test !~ $match;
-                }
-                my $usethr = ( $test =~ /(\d+|\b)thr/ && $] >= 5.008 && $Config{useithreads} );
-                my $v_test = "t/zv${v_type}_$test";
-                my $v_perl = ( $test =~ /taint/ ) ? "perl -wT" : "perl -w";
-                printf "%s %s\n", $v_test, ($usethr) ? "(use threads)" : "";
-                open PPT, ">$v_test" or warn "Can't create $v_test: $!";
-                print PPT "#!$v_perl\n";
-                print PPT "use threads;\n" if $usethr;
-                print PPT "$_;\n" foreach @test_adds;
-                print PPT "require './t/$test'; # or warn \$!;\n";
-                close PPT or warn "Error writing $v_test: $!";
-            }
-        }
-    }
-
+    return;
 }
 
 sub setup
@@ -169,9 +176,9 @@ sub setup
 
     my %allconf  = $self->allconf();
     # from DBI::Test::{NameSpace}::List->test_cases()
-    my %alltests = $self->alltests();
+    my @alltests = $self->alltests();
 
-    $self->populate_tests( \%alltests, \%allconf );
+    $self->populate_tests( \@alltests, \%allconf );
 }
 
 1;
