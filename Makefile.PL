@@ -5,10 +5,6 @@ use ExtUtils::MakeMaker;
 
 use lib qw(lib);
 use DBI::Test::Conf ();
-use File::Find;
-
-my @t_files;
-find (sub { m/\.t$/ and push @t_files, $File::Find::name }, qw( t xt ));
 
 my %eumm_opt = (
     MIN_PERL_VERSION => '5.008001',
@@ -32,7 +28,7 @@ my %eumm_opt = (
     LICENSE          => 'perl',
     AUTHOR           => 'The DBI team <dbi-dev@perl.org>',
     test             => {
-	TESTS           => join (" " => @t_files),
+	TESTS           => 'xt/*.t',
 	},
     );
 
@@ -49,7 +45,7 @@ my %eumm_opt = (
     $eumm_version < 6.31 and delete $eumm_opt{LICENSE};
     }
 
-DBI::Test::Conf->setup();
+$eumm_opt{test}->{TESTS} = join( " ", $eumm_opt{test}->{TESTS}, DBI::Test::Conf->setup());
 WriteMakefile (%eumm_opt);
 
 package MY;

@@ -153,21 +153,25 @@ EOC
 
     print $tfh "$test_case_code\n";
     close($tfh);
+
+    return $test_dir;
 }
 
 sub populate_tests
 {
     my ( $self, $alltests, $allconf ) = @_;
+    my %test_dirs;
 
     foreach my $conf (values %$allconf)
     {
 	foreach my $test (@$alltests)
 	{
-	    $self->create_test($test, $conf);
+	    my $test_dir = $self->create_test($test, $conf);
+	    $test_dirs{$test_dir} = 1;
 	}
     }
 
-    return;
+    return map { File::Spec->catfile( $_, "*.t" ) } keys %test_dirs;
 }
 
 sub setup
@@ -178,7 +182,7 @@ sub setup
     # from DBI::Test::{NameSpace}::List->test_cases()
     my @alltests = $self->alltests();
 
-    $self->populate_tests( \@alltests, \%allconf );
+    return $self->populate_tests( \@alltests, \%allconf );
 }
 
 1;
