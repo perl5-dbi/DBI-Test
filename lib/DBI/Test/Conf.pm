@@ -142,11 +142,12 @@ sub create_test
     -d $test_dir or File::Path::make_path($test_dir);
     open(my $tfh, ">", $test_file) or croak("Cannot open \"$test_file\": $!");
     my $test_case_code = <<EOC;
-#!$^X\n"
+#!$^X\n
 
 $test_conf->{init_stub}
 
-use ${test_case};
+# XXX how to deal with namespaces here and how do they affect generated test names?
+use DBI::Test::Case::${test_case};
 
 ${test_case}->run_test;
 EOC
