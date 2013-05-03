@@ -206,7 +206,7 @@ BEGIN
 
 =head1 AUTHOR AND COPYRIGHT
 
-Copyright (c) 2013 by Jens Rehsack: rehsackATcpan.org
+Copyright (c) 2013 by Jens Rehsack
 
 All rights reserved.
 
