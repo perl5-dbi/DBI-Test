@@ -1,5 +1,5 @@
-use strict;
-use warnings;
+package DBI::Test::Case::connect;
+
 use Test::More;
 
 our @DB_CREDS = ('dbi:SQLite::memory:', undef, undef, { AutoCommit => 0});

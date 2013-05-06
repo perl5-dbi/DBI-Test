@@ -144,6 +144,9 @@ sub create_test
     my $test_case_code = <<EOC;
 #!$^X\n
 
+# XXX Maybe "use DBI;" here depending on some conf flags ...
+use DBI::Mock;
+
 $test_conf->{init_stub}
 
 # XXX how to deal with namespaces here and how do they affect generated test names?

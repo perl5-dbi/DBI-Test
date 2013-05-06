@@ -44,7 +44,7 @@ sub _make_root_class
     my ( $ref, $root ) = @_;
     $root or return;
 
-    $c = ref $ref;
+    my $c = ref $ref;
 
     no strict 'refs';
     eval qq{
@@ -64,6 +64,7 @@ sub _make_root_class
         bless( $ref, $root );
     }
 
+    return;
 }
 
 sub _make_handle
@@ -85,7 +86,9 @@ sub connect
                 passw       => $pass,
                 attrs       => $attrs
               };
-    return _make_handle( $dbh, "DBI::Mock::db" );
+    $dbh = _make_handle( $dbh, "DBI::db" );
+    $dbh->STORE("Active", 1);
+    return $dbh;
 }
 
 our $stderr = 1;
@@ -140,6 +143,18 @@ sub set_err
 	$errstr = $_errstr;;
 	return;
     }
+
+    sub FETCH
+    {
+	my ($dbh, $attr) = @_;
+	return $dbh->{$attr};
+    }
+
+    sub STORE
+    {
+	my ($dbh, $attr, $val) = @_;
+	return $dbh->{$attr} = $val;
+    }
 }
 
 {
@@ -169,17 +184,43 @@ sub set_err
 	$errstr = $_errstr;;
 	return;
     }
+
+    sub FETCH
+    {
+	my ($dbh, $attr) = @_;
+	return $dbh->{$attr};
+    }
+
+    sub STORE
+    {
+	my ($dbh, $attr, $val) = @_;
+	return $dbh->{$attr} = $val;
+    }
 }
 
 sub _inject_mock_dbi
 {
     eval qq{
-	package DBI;
+	package #
+	    DBI;
 
-	use parent qw(DBI::Mock);
+	our \@ISA = qw(DBI::Mock);
 
-	our VERSION = "1.625";
+	our \$VERSION = "1.625";
+
+	package #
+	    DBI::db;
+
+	our \@ISA = qw(DBI::Mock::db);
+
+	package #
+	    DBI::st;
+
+	our \@ISA = qw(DBI::Mock::st);
+
+	1;
     };
+    $@ and die $@;
     $INC{'DBI.pm'} = 'mocked';
 }
 
@@ -203,6 +244,8 @@ BEGIN
         _inject_mock_dbi();
     }
 }
+
+1;
 
 =head1 AUTHOR AND COPYRIGHT
 
