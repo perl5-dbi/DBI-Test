@@ -152,7 +152,7 @@ $test_conf->{init_stub}
 # XXX how to deal with namespaces here and how do they affect generated test names?
 use DBI::Test::Case::${test_case};
 
-${test_case}->run_test;
+# ${test_case}->run_test;
 EOC
 
     print $tfh "$test_case_code\n";
