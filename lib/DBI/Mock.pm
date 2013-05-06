@@ -24,7 +24,7 @@ use Carp qw(carp confess);
 sub _set_isa
 {
     my ( $classes, $topclass ) = @_;
-    foreach my $suffix ( '::db', '::st' )
+    foreach my $suffix ( '::dr', '::db', '::st' )
     {
         my $previous = $topclass || 'DBI';    # trees are rooted here
         foreach my $class (@$classes)
@@ -67,28 +67,63 @@ sub _make_root_class
     return;
 }
 
+my %default_attrs = (
+    Warn => 1,
+    Active => 1,
+    Executed => 0, # set on execute ...
+    Kids => 0,
+    ActiveKids => 0,
+    CachedKids => 0,
+    Type => "db",
+    ChildHandles => undef, # XXX improve to fake :/
+    CompatMode => 0,
+    InactiveDestroy => 0,
+    AutoInactiveDestroy => 0,
+    PrintWarn => $^W,
+    PrintError => 1,
+    RaiseError => 0,
+    HandleError => undef, # XXX no default specified
+    HandleSetErr => undef, # XXX no default specified
+    ErrCount => 0,
+    ShowErrorStatement => undef, # XXX no default specified
+    TraceLevel => 0, # XXX no default specified
+    FetchHashKeyName => "NAME", # XXX no default specified
+    ChopBlanks => undef, # XXX no default specified
+    LongReadLen => 0,
+    LongTruncOk => 0,
+    TaintIn => 0,
+    TaintOut => 0,
+    Taint => 0,
+    Profile => undef, # XXX no default specified
+    ReadOnly => 1,
+    Callbacks  => undef,
+);
+
 sub _make_handle
 {
     my ( $ref, $name ) = @_;
-    my $h = bless( $ref, $name );
+    my $h = bless( { %default_attrs, %$ref }, $name );
     exists $h->{attrs}
       and exists $h->{attrs}->{RootClass}
       and _make_root_class( $h, delete $h->{attrs}->{RootClass} );
     return $h;
 }
 
+my %drivers;
+
+sub _get_drv
+{
+    my ($self, $dsn, $attrs) = @_;
+    my $class = "DBI::dr"; # XXX maybe extract it from DSN? ...
+    defined $drivers{$class} or $drivers{$class} = _make_handle($attrs, $class);
+    return $drivers{$class};
+}
+
 sub connect
 {
     my ( $self, $dsn, $user, $pass, $attrs ) = @_;
-    my $dbh = {
-                data_source => $dsn,
-                user        => $user,
-                passw       => $pass,
-                attrs       => $attrs
-              };
-    $dbh = _make_handle( $dbh, "DBI::db" );
-    $dbh->STORE("Active", 1);
-    return $dbh;
+    my $drh = $self->_get_drv($dsn, $attrs);
+    $drh->connect( $dsn, $user, $pass, $attrs );
 }
 
 our $stderr = 1;
@@ -108,17 +143,89 @@ sub set_err
 
 {
     package    #
+      DBI::Mock::dr;
+
+    our @ISA;
+
+    my %default_db_attrs = (
+	AutoCommit => 1,
+	Driver => undef, # set to the driver itself ...
+	Name => "",
+	Statement => "",
+	RowCacheSize => 0,
+	Username  => "",
+    );
+
+    sub connect
+    {
+	my ($drh, $dbname, $user, $auth, $attrs) = @_;
+	return DBI::Mock::_make_handle({%default_db_attrs, %$attrs, (defined $drh->{RootClass} ? (RootClass => $drh->{RootClass}) : ())}, "DBI::db");
+    }
+
+    our $err;
+    our $errstr;
+
+    sub err { $err }
+    sub errstr { $errstr }
+
+    sub set_err
+    {
+	my ($ref, $_err, $_errstr) = @_;
+	$err = $_err;
+	$errstr = $_errstr;;
+	return;
+    }
+
+    sub FETCH
+    {
+	my ($dbh, $attr) = @_;
+	return $dbh->{$attr};
+    }
+
+    sub STORE
+    {
+	my ($dbh, $attr, $val) = @_;
+	return $dbh->{$attr} = $val;
+    }
+}
+{
+    package    #
       DBI::Mock::db;
 
     our @ISA;
+
+    my %default_st_attrs = (
+	NUM_OF_FIELDS => undef,
+	NUM_OF_PARAMS => undef,
+	NAME => undef,
+	NAME_lc => undef,
+	NAME_uc => undef,
+	NAME_hash => undef,
+	NAME_lc_hash => undef,
+	NAME_uc_hash => undef,
+	TYPE => undef,
+	PRECISION => undef,
+	SCALE => undef,
+	NULLABLE => undef,
+	CursorName => undef,
+	Database => undef,
+	Statement => undef,
+	ParamValues => undef,
+	ParamTypes => undef,
+	ParamArrays => undef,
+	RowsInCache  => undef,
+    );
+
+    sub _valid_stmt
+    {
+	1;
+    }
 
     sub prepare
     {
 	my ($dbh, $stmt, $attrs) = @_;
 	_valid_stmt($stmt, $attrs) or return; # error already set by _valid_stmt
-	$dbh->{RootClass} and $attrs->{RootClass} = $dbh->{RootClass};
-	my $sth = {stmt => $stmt, attrs => $attrs};
-	return _make_handle($attrs, "DBI::Mock::st");
+	return DBI::Mock::_make_handle({%default_st_attrs, %$attrs, Statement => $stmt, (defined $dbh->{RootClass} ? (RootClass => $dbh->{RootClass}) : ())}, "DBI::st");
     }
 
     sub do
@@ -162,6 +269,9 @@ sub set_err
       DBI::Mock::st;
 
     our @ISA;
+
+    my %default_attrs = (
+    );
 
     sub execute
     {
@@ -209,6 +319,11 @@ sub _inject_mock_dbi
 	our \$VERSION = "1.625";
 
 	package #
+	    DBI::dr;
+
+	our \@ISA = qw(DBI::Mock::dr);
+
+	package #
 	    DBI::db;
 
 	our \@ISA = qw(DBI::Mock::db);
@@ -232,7 +347,7 @@ sub _miss_dbi
     $_have_dbi = 0;
     eval qq{
 	require DBI;
-	$_have_dbi = 1;
+	\$_have_dbi = 1;
     };
     return !$_have_dbi;
 }
