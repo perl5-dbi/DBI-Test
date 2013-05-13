@@ -6,10 +6,10 @@ use warnings;
 use Carp qw(croak);
 use Config;
 
-use Cwd ();
+use Cwd            ();
 use File::Basename ();
-use File::Path ();
-use File::Spec ();
+use File::Path     ();
+use File::Spec     ();
 
 use Module::Pluggable::Object ();
 
@@ -21,9 +21,9 @@ sub cfg_plugins
 
     my $finder = Module::Pluggable::Object->new(
                                                  search_path => ["DBI::Test"],
-						 require    => 1,
-                                                 only       => qr/::Conf$/,
-                                                 inner      => 0
+                                                 require     => 1,
+                                                 only        => qr/::Conf$/,
+                                                 inner       => 0
                                                );
     my @plugs = grep { $_->isa("DBI::Test::Conf") } $finder->plugins();
     $cfg_plugins = \@plugs;
@@ -33,21 +33,50 @@ sub cfg_plugins
 
 my %conf = (
     default => {
-	category => undef,
-	cat_abbrev => "",
-	abbrev => "",
-	prefix => "", # XXX kick it out when we calculate the prefixes
-	init_stub => "",
-	match => ".*",
-	name => "Unmodified Test",
-    },
-    #    ...
-    #    p => {	name => "DBI::PurePerl",
-    #	    match => qr/^\d/,
-    #	    add => [ '$ENV{DBI_PUREPERL} = 2',
-    #		     'END { delete $ENV{DBI_PUREPERL}; }' ],
-    #    },
-);
+                 category   => "mock",
+                 cat_abbrev => "m",
+                 abbrev     => "b",
+                 init_stub  => qq(\$ENV{DBI_MOCK} = 1;),
+                 match      => {
+                            general   => qq(require DBI;),
+                            namespace => [""],
+                          },
+                 name => "Unmodified Test",
+               },
+    dbi_pp => {
+                category   => "dbi",
+                cat_abbrev => "z",
+                abbrev     => "p",                          # use DBI::PurePerl
+                init_stub  => qq(\$ENV{DBI_PUREPERL}=1;),
+                match      => "...",
+                name       => "DBI PurePerl",
+              },
+    dbi_gofer => {
+                   category   => "dbi",
+                   cat_abbrev => "z",
+                   abbrev     => "g",                           # use DBI::PurePerl
+                   init_stub  => qq(\$ENV{DBI_GOFER ...}=1;),
+                   match      => "...",
+                   name       => "DBI PurePerl",
+                 },
+    sql_nano => {
+        category   => "sql::statement / dbi",
+        cat_abbrev => "s",
+        abbrev     => "n",
+        init_stub  => qq(\$ENV{DBI_SQL_NANO}=1;),
+        match      => {
+                   general    => qq(\$ENV{DBI.pm} =~ m|/|),
+                   name_space => [qw(DBI)],                   # DBD::CVS might hook here ...
+                   name       => "...",
+                 },
+        name => "using DBI SQL::Nano",
+                },
+           );
+
+=pod
+
+
+=cut
 
 sub conf { %conf; }
 
@@ -59,7 +88,7 @@ sub allconf
     foreach my $plugin (@plugins)
     {
         # Hash::Merge->merge( ... )
-	%allconf = ( %allconf, $plugin->conf() );
+        %allconf = ( %allconf, $plugin->conf() );
     }
     return %allconf;
 }
@@ -72,9 +101,9 @@ sub tc_plugins
 
     my $finder = Module::Pluggable::Object->new(
                                                  search_path => ["DBI::Test"],
-						 require    => 1,
-                                                 only       => qr/::List$/,
-                                                 inner      => 0
+                                                 require     => 1,
+                                                 only        => qr/::List$/,
+                                                 inner       => 0
                                                );
     my @plugs = grep { $_->isa("DBI::Test::List") } $finder->plugins();
     $tc_plugins = \@plugs;
@@ -84,13 +113,13 @@ sub tc_plugins
 
 sub alltests
 {
-    my ($self)  = @_;
+    my ($self) = @_;
     my @alltests;
     my @plugins = $self->tc_plugins();
     foreach my $plugin (@plugins)
     {
         # Hash::Merge->merge( ... )
-	@alltests = ( @alltests, $plugin->test_cases() );
+        @alltests = ( @alltests, $plugin->test_cases() );
     }
     return @alltests;
 }
@@ -126,28 +155,101 @@ sub combine_nk
     return @result;
 }
 
+# simplified copy from Math::Cartesian::Product
+# Copyright (c) 2009 Philip R Brenan.
+# This module is free software. It may be used, redistributed and/or modified under the same terms as Perl itself.
+
+sub cartesian
+{
+    my @C = @_;    # Lists to be multiplied
+    my @c = ();    # Current element of cartesian product
+    my @P = ();    # Cartesian product
+    my $n = 0;     # Number of elements in product
+
+    return 0 if @C == 0;    # Empty product
+
+    # Generate each cartesian product when there are no prior cartesian products.
+
+    my $p;
+    $p = sub {
+        if ( @c < @C )
+        {
+            for ( @{ $C[@c] } )
+            {
+                push @c, $_;
+                &$p();
+                pop @c;
+            }
+        }
+        else
+        {
+            my $p = [@c];
+            push @P, $p;
+        }
+    };
+
+    # Generate each cartesian product allowing for prior cartesian products.
+
+    my $q;
+    $q = sub {
+        if ( @c < @C )
+        {
+            for ( @{ $C[@c] } )
+            {
+                push @c, $_;
+                &$q();
+                pop @c;
+            }
+        }
+        else
+        {
+            my $p = [ map { ref eq __PACKAGE__ ? @$_ : $_ } @c ];
+            push @P, $p;
+        }
+    };
+
+    # Determine optimal method of forming cartesian products for this call
+
+    if (
+        grep {
+            grep { ref eq __PACKAGE__ }
+              @$_
+        } @C
+       )
+    {
+        &$q;
+    }
+    else
+    {
+        &$p;
+    }
+
+    @P;
+}
+
 sub create_test
 {
-    my ($self, $test_case, $test_conf) = @_;
+    my ( $self, $test_case, $prefix, $test_confs ) = @_;
 
     my $test_file = $test_case;
     $test_file =~ s,::,/,g;
-    $test_file = File::Spec->catfile("t", $test_file . ".t" );
+    $test_file = File::Spec->catfile( "t", $test_file . ".t" );
     my $test_dir = File::Basename::dirname($test_file);
 
     $test_file = File::Basename::basename($test_file);
-    $test_file = $test_conf->{prefix} . $test_file;
-    $test_file = File::Spec->catfile($test_dir, $test_file);
+    $prefix and $test_file = join( "_", $prefix, $test_file );
+    $test_file = File::Spec->catfile( $test_dir, $test_file );
 
     -d $test_dir or File::Path::make_path($test_dir);
-    open(my $tfh, ">", $test_file) or croak("Cannot open \"$test_file\": $!");
-    my $test_case_code = <<EOC;
+    open( my $tfh, ">", $test_file ) or croak("Cannot open \"$test_file\": $!");
+    my $init_stub = join( "\n", map { $_->{init_stub} } @$test_confs );
+    my $test_case_code = sprintf( <<EOC, $init_stub );
 #!$^X\n
 
 # XXX Maybe "use DBI;" here depending on some conf flags ...
 use DBI::Mock;
 
-$test_conf->{init_stub}
+%s
 
 # XXX how to deal with namespaces here and how do they affect generated test names?
 use DBI::Test::Case::${test_case};
@@ -161,18 +263,79 @@ EOC
     return $test_dir;
 }
 
+# my %conf = (
+#     default => {
+# 	category => "mock",
+# 	cat_abbrev => "m",
+# 	abbrev => "b",
+# 	init_stub => qq(\$ENV{DBI_MOCK} = 1;),
+# 	match => {
+# 	    namespace => [ "" ],
+# 	},
+# 	name => "Unmodified Test",
+#     },
+# );
+
+sub create_prefixes
+{
+    my ( $self, $allconf ) = @_;
+    my %pfx_hlp;
+    my %pfx_lst;
+
+    foreach my $cfg ( values %$allconf )
+    {
+        push( @{ $pfx_hlp{ $cfg->{cat_abbrev} } }, $cfg );
+    }
+
+    foreach my $cfg_id ( keys %pfx_hlp )
+    {
+        my $n = scalar( @{ $pfx_hlp{$cfg_id} } );
+        my @combs = map { combine_nk( $n, $_ ); } ( 1 .. $n );
+        scalar @combs or next;
+        $pfx_lst{$cfg_id} = {
+            map {
+                my @cfgs = map { $pfx_hlp{$cfg_id}->[$_] } @{$_};
+                my $pfx = "${cfg_id}v" . join( "", map { $_->{abbrev} } @cfgs );
+                $pfx => \@cfgs
+              } @combs
+        };
+    }
+
+    my %pfx_direct = map { %{$_} } values %pfx_lst;
+    %pfx_hlp = %pfx_lst;
+    %pfx_lst = ( "" => [] );
+    do
+    {
+        my @pfx   = keys %pfx_hlp;
+        my $n     = scalar(@pfx);
+        my @combs = map { combine_nk( $n, $_ ); } ( 1 .. $n );
+        foreach my $comb (@combs)
+        {
+            my @cfgs = cartesian( map { [ keys %{ $pfx_hlp{ $pfx[$_] } } ] } @$comb );
+            foreach my $cfg (@cfgs)
+            {
+                my $_pfx = join( "_", @$cfg );
+                $pfx_lst{$_pfx} = [ map { @{ $pfx_direct{$_} } } @$cfg ];
+            }
+        }
+    } while (0);
+
+    return %pfx_lst;
+}
+
 sub populate_tests
 {
     my ( $self, $alltests, $allconf ) = @_;
     my %test_dirs;
 
-    foreach my $conf (values %$allconf)
+    my %pfx_cfgs = $self->create_prefixes($allconf);
+    foreach my $pfx ( keys %pfx_cfgs )
     {
-	foreach my $test (@$alltests)
-	{
-	    my $test_dir = $self->create_test($test, $conf);
-	    $test_dirs{$test_dir} = 1;
-	}
+        foreach my $test (@$alltests)
+        {
+            my $test_dir = $self->create_test( $test, $pfx, $pfx_cfgs{$pfx} );
+            $test_dirs{$test_dir} = 1;
+        }
     }
 
     return map { File::Spec->catfile( $_, "*.t" ) } keys %test_dirs;
@@ -182,7 +345,7 @@ sub setup
 {
     my ($self) = @_;
 
-    my %allconf  = $self->allconf();
+    my %allconf = $self->allconf();
     # from DBI::Test::{NameSpace}::List->test_cases()
     my @alltests = $self->alltests();
 
