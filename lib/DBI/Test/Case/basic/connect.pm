@@ -2,7 +2,7 @@ package DBI::Test::Case::connect;
 
 use Test::More;
 
-our @DB_CREDS = ('dbi:SQLite::memory:', undef, undef, { AutoCommit => 0});
+our @DB_CREDS = ('dbi:SQLite:dbname=:memory:', undef, undef, { AutoCommit => 0});
 my %SQLS = (
   'SELECT' => 'SELECT 1+1',
   'INSERT' => undef
