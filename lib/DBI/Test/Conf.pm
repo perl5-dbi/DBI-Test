@@ -166,7 +166,7 @@ sub cartesian
     my @P = ();    # Cartesian product
     my $n = 0;     # Number of elements in product
 
-    return 0 if @C == 0;    # Empty product
+    @C or return;  # Empty product
 
     # Generate each cartesian product when there are no prior cartesian products.
 
@@ -188,41 +188,7 @@ sub cartesian
         }
     };
 
-    # Generate each cartesian product allowing for prior cartesian products.
-
-    my $q;
-    $q = sub {
-        if ( @c < @C )
-        {
-            for ( @{ $C[@c] } )
-            {
-                push @c, $_;
-                &$q();
-                pop @c;
-            }
-        }
-        else
-        {
-            my $p = [ map { ref eq __PACKAGE__ ? @$_ : $_ } @c ];
-            push @P, $p;
-        }
-    };
-
-    # Determine optimal method of forming cartesian products for this call
-
-    if (
-        grep {
-            grep { ref eq __PACKAGE__ }
-              @$_
-        } @C
-       )
-    {
-        &$q;
-    }
-    else
-    {
-        &$p;
-    }
+    &$p();
 
     @P;
 }
