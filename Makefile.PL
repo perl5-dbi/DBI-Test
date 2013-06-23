@@ -30,6 +30,7 @@ my %eumm_opt = (
     test             => {
 	TESTS           => join (' ' => 'xt/*.t', DBI::Test::Conf->setup ()),
 	},
+    clean => { FILES => "t" }
     );
 
 # Backward compatibility issues for EU::MM
