@@ -36,7 +36,8 @@ my %conf = (
                  category   => "mock",
                  cat_abbrev => "m",
                  abbrev     => "b",
-                 init_stub  => qq(\$ENV{DBI_MOCK} = 1;),
+                 init_stub  => qq(),
+                 env_vars   => { DBI_MOCK => 1 },
                  match      => {
                             general   => qq(require DBI;),
                             namespace => [""],
@@ -47,7 +48,8 @@ my %conf = (
                 category   => "dbi",
                 cat_abbrev => "z",
                 abbrev     => "p",                          # use DBI::PurePerl
-                init_stub  => qq(\$ENV{DBI_PUREPERL}=1;),
+                init_stub  => qq(),
+                env_vars   => { DBI_PUREPERL => 1 },
                 match      => "...",
                 name       => "DBI PurePerl",
               },
@@ -55,7 +57,8 @@ my %conf = (
                    category   => "dbi",
                    cat_abbrev => "z",
                    abbrev     => "g",                           # use DBI::PurePerl
-                   init_stub  => qq(\$ENV{DBI_GOFER ...}=1;),
+                   init_stub  => qq(),
+                   env_vars   => { DBI_AUTOPROXY => 'dbi:Gofer:transport=null;policy=pedantic' },
                    match      => "...",
                    name       => "DBI PurePerl",
                  },
@@ -63,7 +66,8 @@ my %conf = (
         category   => "sql::statement / dbi",
         cat_abbrev => "s",
         abbrev     => "n",
-        init_stub  => qq(\$ENV{DBI_SQL_NANO}=1;),
+        init_stub  => qq(),
+        env_vars   => { DBI_SQL_NANO => 1 },
         match      => {
                    general    => qq(\$ENV{DBI.pm} =~ m|/|),
                    name_space => [qw(DBI)],                   # DBD::CVS might hook here ...
@@ -206,21 +210,38 @@ sub create_test
     $prefix and $test_file = join( "_", $prefix, $test_file );
     $test_file = File::Spec->catfile( $test_dir, $test_file );
 
+    my %env_vars;
+    for my $tc (@$test_confs) {
+        my $env_vars = $tc->{env_vars} or next;
+        while ( my ($k, $v) = each %$env_vars ) {
+            die "Can't set ENV '$k' to '$v' as it's already set to $env_vars{$k}'\n"
+                if defined $env_vars{$k} and $env_vars{$k} ne $v;
+            $env_vars{$k} = $v;
+        }
+    }
+
+    print "Writing $test_file\n";
     -d $test_dir or File::Path::make_path($test_dir);
     open( my $tfh, ">", $test_file ) or croak("Cannot open \"$test_file\": $!");
     my $init_stub = join( "\n", map { $_->{init_stub} } @$test_confs );
-    my $test_case_code = sprintf( <<EOC, $init_stub );
+    my $set_env = join( "\n", map { "\$ENV{$_} = q{$env_vars{$_}};" } sort keys %env_vars );
+    my $del_env = join( "\n", map { "delete \$ENV{$_};" } sort keys %env_vars ); # for VMS
+    my $test_case_code = <<EOC;
 #!$^X\n
+
+${set_env}
 
 # XXX Maybe "use DBI;" here depending on some conf flags ...
 use DBI::Mock;
 
-%s
+${init_stub}
 
 # XXX how to deal with namespaces here and how do they affect generated test names?
 use DBI::Test::Case::${test_case};
 
 # ${test_case}->run_test;
+
+${del_env}
 EOC
 
     print $tfh "$test_case_code\n";
