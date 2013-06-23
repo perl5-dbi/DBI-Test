@@ -1,5 +1,7 @@
 # DBI::Test - The DBI/DBD API Test Suite
 
+[![Build Status](https://travis-ci.org/perl5-dbi/DBI-Test.png?branch=master)](https://travis-ci.org/perl5-dbi/DBI-Test)
+
 ## Description
 
 This module aims at a transparent test suite for the DBI API
