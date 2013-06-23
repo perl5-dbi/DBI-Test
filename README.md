@@ -82,15 +82,15 @@ How that is currently tested:
 
 What the new plan would be:
 
-[![new plan](//tux.nl/Talks/DBI-Test/images/dbi-api.png)](//tux.nl/Talks/DBI-Test/images/dbi-api.png)
+[![new plan](http://tux.nl/Talks/DBI-Test/images/dbi-api.png)](http://tux.nl/Talks/DBI-Test/images/dbi-api.png)
 
 The plan is to support a full matrix of tests, including both DBI/XS
 and pure-perl DBI, as well as with and without proxy or other optional
 parts.
 
-There will be a possibility to skip pure-perl DBI (`DBD::Oracle`,
-``DBD::CSV with `Text::CSV_XS`) or to skip DBI/XS (`DBD::Pg_PP`, `DBD::CSV`
-with `Text::CSV_PP`).
+There will be a possibility to skip pure-perl DBI (DBD::Oracle,
+DBD::CSV with Text::CSV\_XS) or to skip DBI/XS (DBD::Pg\_PP, DBD::CSV
+with Text::CSV\_PP).
 
 Visit the sandbox in the repository to view unrelated notes and stuff
 that won't be part of the distribution.
