@@ -2,6 +2,10 @@
 
 Currently this is a list of open issues and discussion points...
 
+Topics can be removed once they're settled and the relevant docs have been
+updated.
+
+
 ## DBI::Test as a DBD author's tool
 
 This is the principle use-case for DBI::Test: to provide a common suite of
@@ -25,14 +29,34 @@ The goal here would be to test the methods the DBI implements itself and the
 services the DBI provides to drivers, and also to test the various drivers
 shipped with the DBI.
 
-This is a secondary goal.
+This is a secondary goal, but is important because DBI::Test will probably
+become the primary test suite for the drivrs that ship with DBI.
+
+
+## Define what DBI::Test is NOT trying to do
+
+* It's not trying to test the database SQL behaviour (ORDER BY, JOINs etc)
 
 
 ## List some minimum and other edge cases we want to handle
 
-Example miniumum: Using the DBM with 
+Example: Using the DBM with SQL::Nano parser.
 
-## 
+This means that, as far as possible, all tests should use very simple
+SQL and only one or two string columns.
+
+Obviously some tests will need to use more than two columns, or columns of
+different type, but they should be the exception.
+
+Tests that require other types or more columns (which should be rare) can use
+$dbh->type_info and $dbh->get_info(SQL_MAXIMUM_COLUMNS_IN_TABLE) to check if
+the test should be skipped for the current driver.
+
+
+## Creating and populating test data tables (the fixtures)
+
+If the test code creates a populates the test data tables (the fixtures)
+then it'll be hard for 
 
 
 ## Should we create .t files at all, and if so, how many?
@@ -82,12 +106,16 @@ The run() sub could look something like this:
         subtest '...', \&baz;
     }
 
-to invoke a set of tests. Taking that a step further, the run() function could
-automatically detect what test functions exist in a package and call each in turn.
+to invoke a set of tests.
+
+Taking that a step further, the run() function could automatically detect what
+test functions exist in a package and call each in turn.
+
 It could also call setup and teardown subs that could control fixtures.
 Then test modules would look something like this:
 
-    use DBI::Test::RunTestModule qw(run);
+    package DBI::Test::...;
+    use DBI::Test::ModuleTestsRunner qw(run);
     sub test__setup { ... }
     sub test__teardown { ... }
     sub test_foo { ... }
@@ -96,6 +124,13 @@ Then test modules would look something like this:
 
 The imported run() could also do things like randomize the execution
 order of the test_* subs.
+
+The test__setup sub should be able to skip the entire module of tests
+if they're not applicable for the current $dbh and test context.
+E.g., transaction tests on a driver that doesn't support transactions.
+
+The test__teardown sub should aim to restore everything to how it was before
+test__setup was called. This may become useful for things like leak checking.
 
 
 ## Is there a need for some kind of 'test context' object?
@@ -110,4 +145,58 @@ tests we at least these options:
 4. Use a global, managed by a higher-level module
 
 Which of those suits best would become more clear further down the road.
+
+
+## Handling expected failures/limitations
+
+Some combinations of driver and context will have limitations that will cause
+some tests to fail. For example, the DBI test suite has quite a few special cases
+for gofer:
+
+    $ ack -li gofer t
+    t/03handle.t
+    t/08keeperr.t
+    t/10examp.t
+    t/48dbi_dbd_sqlengine.t
+    t/49dbd_file.t
+    t/50dbm_simple.t
+    t/51dbm_file.t
+    t/52dbm_complex.t
+    t/65transact.t
+    t/72childhandles.t
+
+Some mechanism will be needed to either skip affected tests or mark them as TODO's.
+This seems like a good use for some kind of 'test context' object that would
+indicate which kinds of tests to skip. Something like:
+
+    sub test_attr_Kids {
+        plan skip_all => ''
+            if $test_context->{skip_test_attr_Kids};
+        ...
+    }
+
+Note that the mechanism should be very specific to the test and not copy the
+current "skip if using gofer" design, which is too broard.
+
+Umm. Given that design it's possible that run() could and should automate the
+$test_context->{"skip_$test_sub_name"} check so it doesn't have to be written
+out in each test whenever a new skip is needed.
+
+There might be value in supporting TODO tests in a similar way.
+
+
+## Using the test suite results to summarize driver behaviour
+
+It would be useful to be able to store for later display the results of running
+the tests on different drivers and in different contexts (gofer, nano sql,
+pure-perl etc). Then it would be possible to render visualizations to compare
+tests vs contexts and compare drivers across tests and contexts.
+Something similar to the cpantesters and perl6 compiler features results:
+
+    http://matrix.cpantesters.org/?dist=DBI
+    http://perl6.org/compilers/features
+
+This would be another win for using a smart run() sub and subtests 
+The details() method in https://metacpan.org/module/Test::Builder#Test-Status-and-Info
+should be able to provide the raw info.
 
