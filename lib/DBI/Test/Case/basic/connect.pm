@@ -2,11 +2,7 @@ package DBI::Test::Case::connect;
 
 use Test::More;
 
-our @DB_CREDS = ('dbi:SQLite:dbname=:memory:', undef, undef, { AutoCommit => 0});
-my %SQLS = (
-  'SELECT' => 'SELECT 1+1',
-  'INSERT' => undef
-);
+our @DB_CREDS = ('dbi:NullP:', undef, undef, { ReadOnly => 1 });
 
 {
   my $dbh = DBI->connect( @DB_CREDS );
