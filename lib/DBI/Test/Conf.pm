@@ -43,34 +43,6 @@ my %conf = (
                           },
                  name => "Unmodified Test",
                },
-    dbi_pp => {
-                category   => "dbi",
-                cat_abbrev => "z",
-                abbrev     => "p",                          # use DBI::PurePerl
-                init_stub  => qq(\$ENV{DBI_PUREPERL}=1;),
-                match      => "...",
-                name       => "DBI PurePerl",
-              },
-    dbi_gofer => {
-                   category   => "dbi",
-                   cat_abbrev => "z",
-                   abbrev     => "g",                           # use DBI::PurePerl
-                   init_stub  => qq(\$ENV{DBI_GOFER ...}=1;),
-                   match      => "...",
-                   name       => "DBI PurePerl",
-                 },
-    sql_nano => {
-        category   => "sql::statement / dbi",
-        cat_abbrev => "s",
-        abbrev     => "n",
-        init_stub  => qq(\$ENV{DBI_SQL_NANO}=1;),
-        match      => {
-                   general    => qq(\$ENV{DBI.pm} =~ m|/|),
-                   name_space => [qw(DBI)],                   # DBD::CVS might hook here ...
-                   name       => "...",
-                 },
-        name => "using DBI SQL::Nano",
-                },
            );
 
 =pod
