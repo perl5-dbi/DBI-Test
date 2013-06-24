@@ -35,7 +35,12 @@ become the primary test suite for the drivrs that ship with DBI.
 
 ## Define what DBI::Test is NOT trying to do
 
-* It's not trying to test the database SQL behaviour (ORDER BY, JOINs etc)
+* It's not trying to test the database SQL behaviour (ORDER BY, JOINs etc).
+Databases (an drivers that implement their own databases) should have their
+own test suite for that.
+
+* It's not trying to test the database SQL syntax. As many tests as possible
+should be usable even for databases that don't use SQL at all.
 
 
 ## List some minimum and other edge cases we want to handle
@@ -55,8 +60,41 @@ the test should be skipped for the current driver.
 
 ## Creating and populating test data tables (the fixtures)
 
-If the test code creates a populates the test data tables (the fixtures)
-then it'll be hard for 
+If the test code creates and populates the test data tables (the fixtures)
+then it'll be hard for drivers that don't use SQL, or use a strange variant, to
+make use of the test suite.
+
+So creation and population of fixtures should be abstracted out
+into separate module(s) that can be overridden in some way if needed.
+
+We shouldn't need many fixture tables. Most of the test suite could use
+a table with two string columns that's populated with either zero or
+three rows.
+
+The interface from the test modules could be something like:
+
+    $table_name = init_fixture_table(types => 'str,str', rows => 2);
+
+
+## Should the test code construct statements itself?
+
+As with the previous topic about test tables, if the tests have SQL embedded in
+them then they'll be limited to testing drivers that support that syntax.
+The DBI never parses the $statement (except for providing some support for
+finding placeholders).
+
+So it seems reasonable that construction of the $statement used for a given
+test should be abstracted out into separate module(s) that can be overridden in
+some way if needed.
+
+The interface from the test modules could be something like:
+
+    $statement = get_test_statement('name for statement', $table);
+
+Where 'name for statement' is an identifier for the kind of statement needed
+and get_test_statement() maps that to suitable SQL.
+
+This is similar to the %SQLS in lib/DBI/Test/Case/basic/do.pm, for example.
 
 
 ## Should we create .t files at all, and if so, how many?
