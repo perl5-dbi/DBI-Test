@@ -6,6 +6,8 @@ use ExtUtils::MakeMaker;
 use lib qw(lib);
 use DBI::Test::Conf ();
 
+my @generated_tests = DBI::Test::Conf->setup();
+
 my %eumm_opt = (
     MIN_PERL_VERSION => '5.008001',
     META_MERGE       => {
@@ -27,8 +29,11 @@ my %eumm_opt = (
 	},
     LICENSE          => 'perl',
     AUTHOR           => 'The DBI team <dbi-dev@perl.org>',
+    clean            => {
+	FILES           => join( " " => @generated_tests ),
+    },
     test             => {
-	TESTS           => join (' ' => 'xt/*.t', DBI::Test::Conf->setup ()),
+	TESTS           => join (' ' => 'xt/*.t', @generated_tests),
 	},
     );
 
