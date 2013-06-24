@@ -45,11 +45,6 @@ my %conf = (
                },
            );
 
-=pod
-
-
-=cut
-
 sub conf { %conf; }
 
 sub allconf
@@ -184,10 +179,12 @@ sub create_test
     my $test_case_code = sprintf( <<EOC, $init_stub );
 #!$^X\n
 
+BEGIN {
+%s
+}
+
 # XXX Maybe "use DBI;" here depending on some conf flags ...
 use DBI::Mock;
-
-%s
 
 # XXX how to deal with namespaces here and how do they affect generated test names?
 use DBI::Test::Case::${test_case};
@@ -200,19 +197,6 @@ EOC
 
     return $test_dir;
 }
-
-# my %conf = (
-#     default => {
-# 	category => "mock",
-# 	cat_abbrev => "m",
-# 	abbrev => "b",
-# 	init_stub => qq(\$ENV{DBI_MOCK} = 1;),
-# 	match => {
-# 	    namespace => [ "" ],
-# 	},
-# 	name => "Unmodified Test",
-#     },
-# );
 
 sub create_prefixes
 {
