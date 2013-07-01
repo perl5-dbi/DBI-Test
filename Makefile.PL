@@ -35,7 +35,6 @@ my %eumm_opt = (
     test             => {
 	TESTS           => join (' ' => 'xt/*.t', @generated_tests),
 	},
-    clean => { FILES => "t" }
     );
 
 # Backward compatibility issues for EU::MM
