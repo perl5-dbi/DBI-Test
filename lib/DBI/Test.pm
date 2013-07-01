@@ -20,6 +20,58 @@ __END__
 
 =head1 SYNOPSIS
 
+In Makefile.PL:
+
+    use lib 'lib'; # to allow DBI::Test finds the test cases of your driver
+    use DBI::Test::Conf ();
+    my @generated_tests = DBI::Test::Conf->setup();
+    WriteMakefile (
+        test => {
+	    TESTS           => join (' ' => 'xt/*.t', @generated_tests),
+        },
+	clean => { FILES => join( " " => @generated_tests ) }
+    );
+
+You provide
+
+    package DBI::Test::Your::Namespace::List;
+    
+    sub test_cases
+    {
+	return qw(...); # list of the test cases you provide
+    }
+    
+    package DBI::Test::Your::Namespace::Conf;
+    
+    sub conf
+    {
+	my %conf = (
+	    gofer => {
+			 category   => "Gofer",
+			 cat_abbrev => "g",
+			 abbrev     => "b",
+			 init_stub  => qq(\$ENV{DBI_AUTOPROXY} = 'dbi:Gofer:transport=null;policy=pedantic';),
+			 match      => sub {
+					 my ($self, $test_case, $namespace, $category, $variant) = @_;
+					 ...
+				  },
+			 name => "Gofer Transport",
+		       },
+		   );
+    }
+    
+    package DBI::Test::Your::Namespace::Case::Your::First;
+    
+    ... # will be t/your/namespace/your/first.t
+    
+    package DBI::Test::Your::Namespace::Case::Your::Second;
+    
+    ... # will be t/your/namespace/your/second.t
+    
+    1;
+
+And enhance DBI::Test with own test cases.
+
 =head1 DESCRIPTION
 
 This module aims at a transparent test suite for the DBI API
@@ -45,13 +97,58 @@ We are discussing issues on the DBI development mailing list 1) and on IRC 2)
  1) The DBI team <dbi-dev@perl.org>
  2) irc.perl.org/6667 #dbi
 
+=head1 SUPPORT
+
+You can find documentation for this module with the perldoc command.
+
+    perldoc SQL::Statement
+
+You can also look for information at:
+
+=over 4
+
+=item * RT: CPAN's request tracker
+
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=DBI-Test>
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/DBI-Test>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/s/DBI-Test>
+
+=item * CPAN Search
+
+L<http://search.cpan.org/dist/DBI-Test/>
+
+=back
+
 =head2 Reporting bugs
+
+If you think you've found a bug then please read
+"How to Report Bugs Effectively" by Simon Tatham:
+L<http://www.chiark.greenend.org.uk/~sgtatham/bugs.html>.
+
+Your problem is most likely related to the specific DBD driver module you're
+using. If that's the case then click on the 'Bugs' link on the L<http://metacpan.org>
+page for your driver. Only submit a bug report against the DBI::Test itself if you're
+sure that your issue isn't related to the driver you're using.
 
 =head1 TEST SUITE
 
+DBI::Test comes with some basic tests to test itself and L<DBI::Mock>.
+The same tests are used for basic DBI self-tests as well as testing the
+SQL::Statement mock driver.
+
 =head1 EXAMPLES
 
+??? Synopsis ???
+
 =head1 DIAGNOSTICS
+
+???
 
 =head1 SEE ALSO
 

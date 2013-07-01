@@ -1,21 +1,5 @@
 package DBI::Mock;
 
-=head1 NAME
-
-DBI::Mock - mock a DBI if we can't find the real one
-
-=head1 SYNOPSIS
-
-  use DBI::Mock;
-
-  my $dbh = DBI::Mock->connect($data_source, $user, $pass, \%attr) or die $DBI::Mock::errstr;
-  my $sth = $dbh->prepare();
-  $sth->execute();
-
-  ... copy some from DBI SYNOPSIS
-
-=cut
-
 use strict;
 use warnings;
 
@@ -362,11 +346,35 @@ BEGIN
 
 1;
 
-=head1 AUTHOR AND COPYRIGHT
 
-Copyright (c) 2013 by Jens Rehsack
+=head1 NAME
 
-All rights reserved.
+DBI::Mock - mock a DBI if we can't find the real one
+
+=head1 SYNOPSIS
+
+  use DBI::Mock;
+
+  my $dbh = DBI::Mock->connect($data_source, $user, $pass, \%attr) or die $DBI::Mock::errstr;
+  my $sth = $dbh->prepare();
+  $sth->execute();
+
+  ... copy some from DBI SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head1 AUTHOR
+
+This module is a team-effort. The current team members are
+
+  H.Merijn Brand   (Tux)
+  Jens Rehsack     (Sno)
+  Peter Rabbitson  (ribasushi)
+  Joakim TE<0x00f8>rmoen   (trmjoa)
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C)2013 - The DBI development team
 
 You may distribute this module under the terms of either the GNU
 General Public License or the Artistic License, as specified in

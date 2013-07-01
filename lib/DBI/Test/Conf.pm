@@ -274,4 +274,32 @@ sub setup
     return $self->populate_tests( \@alltests, \%allconf );
 }
 
+=head1 NAME
+
+DBI::Test::Conf - provides variants configuration for DBI::Test
+
+=head1 DESCRIPTION
+
+This module provides the configuration of variants for tests
+generated from DBI::Test::Case list.
+
+=head1 AUTHOR
+
+This module is a team-effort. The current team members are
+
+  H.Merijn Brand   (Tux)
+  Jens Rehsack     (Sno)
+  Peter Rabbitson  (ribasushi)
+  Joakim TE<0x00f8>rmoen   (trmjoa)
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C)2013 - The DBI development team
+
+You may distribute this module under the terms of either the GNU
+General Public License or the Artistic License, as specified in
+the Perl README file.
+
+=cut
+
 1;
