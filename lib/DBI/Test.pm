@@ -74,9 +74,14 @@ And enhance DBI::Test with own test cases.
 
 =head1 DESCRIPTION
 
-This module aims at a transparent test suite for the DBI API
-to be used from both sides of the API (DBI and DBD) to check
-if the provided functionality is working and complete.
+This module aims to be a test suite for the DBI API and an underlying DBD
+driver, to check if the provided functionality is working and complete.
+
+Part of this module is the ability for self-testing using I<DBI::Mock>.
+This is not designed to be another I<DBI::PurePerl> - it's designed to
+allow tests can be verified to work as expected in a sandbox. This is,
+of course, limited to DBI API itself and cannot load any driver nor
+really execute any action.
 
 =head1 GOAL
 
