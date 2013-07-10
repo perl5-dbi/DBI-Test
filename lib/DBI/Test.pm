@@ -1,10 +1,21 @@
 package DBI::Test;
 
 require 5.008001;
+
 use strict;
 use warnings;
 
+require Exporter;
+use Test::More import => [ '!pass' ];
+
+use parent qw(Test::Builder::Module Exporter);
+
 our $VERSION = "0.001";
+
+our @EXPORT = qw(connect_ok connect_not_ok prepare_ok execute_ok);
+our @EXPORT_OK = qw(connect_ok connect_not_ok prepare_ok execute_ok);
+
+my $CLASS = __PACKAGE__;
 
 =head1 NAME
 
@@ -12,7 +23,43 @@ DBI::Test - Test suite for DBI API
 
 =cut
 
-require Test::Builder;
+sub connect_ok
+{
+    my ($data_source, $username, $auth, $attr, $testname) = @_;
+    my $tb = $CLASS->builder();
+    my $dbh = DBI->connect($data_source, $username, $auth, $attr);
+    # maybe use Test::More::isa_ok directly from here?
+    $tb->ok($dbh, $testname) and $tb->ok($dbh->isa("DBI::db"), $testname) and return $dbh;
+    return;
+}
+
+sub connect_not_ok
+{
+    my ($data_source, $username, $auth, $attr, $testname) = @_;
+    my $tb = $CLASS->builder();
+    my $dbh = DBI->connect($data_source, $username, $auth, $attr);
+    $tb->ok(!$dbh, $testname) or return $dbh;
+    return;
+}
+
+sub prepare_ok
+{
+    my ($dbh, $stmt, $attr, $testname) = @_;
+    my $tb = $CLASS->builder();
+    my $sth = $dbh->prepare($stmt, $attr);
+    $tb->ok($sth, $testname) and  $tb->ok($sth->isa("DBI::st"), $testname) and return $sth;
+    return;
+}
+
+sub execute_ok
+{
+    my ($sth, @vals) = @_;
+    my $testname = pop(@vals);
+    my $tb = $CLASS->builder();
+    my $rv = $sth->execute(@vals);
+    $tb->ok($rv, $testname);
+    return $rv;
+}
 
 1;
 
@@ -82,6 +129,31 @@ This is not designed to be another I<DBI::PurePerl> - it's designed to
 allow tests can be verified to work as expected in a sandbox. This is,
 of course, limited to DBI API itself and cannot load any driver nor
 really execute any action.
+
+=head1 EXPORTS
+
+=head2 connect_ok
+
+  $dbh = connect_ok($dsn, $user, $pass, \%attrs, $test_name);
+
+connect_ok invokes DBI-E<gt> and proves the result in an I<ok>.
+The craéated database handle (C<$dbh>) is returned, if any.
+
+=head2 prepare_ok
+
+  $sth = prepare_ok($dbh, $stmt, \%attrs, $test_name);
+
+prepare_ok invokes $dbh-E<gt>prepare and proves the result in
+an I<ok>. The resulting statement handle (C<$sth>) is returned,
+if any.
+
+=head2 execute_ok
+
+  $rv = execute_ok($sth, $test_name);
+  $rv = execute_ok($sth, @bind_values, $test_name);
+
+execute_ok invokes $sth->excute and proves the result via I<ok>.
+The value got from $sth-E<gt>execute is returned.
 
 =head1 GOAL
 

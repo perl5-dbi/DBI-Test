@@ -176,20 +176,24 @@ sub create_test
     -d $test_dir or File::Path::make_path($test_dir);
     open( my $tfh, ">", $test_file ) or croak("Cannot open \"$test_file\": $!");
     my $init_stub = join( "\n", map { $_->{init_stub} } @$test_confs );
-    my $test_case_code = sprintf( <<EOC, $init_stub );
-#!$^X\n
-
+    $init_stub and $init_stub = sprintf( <<EOS, $init_stub );
 BEGIN {
 %s
 }
+EOS
 
-# XXX Maybe "use DBI;" here depending on some conf flags ...
+    # XXX how to deal with namespaces here and how do they affect generated test names?
+    my $test_case_ns = "DBI::Test::Case::$test_case";
+    my $test_case_code = sprintf( <<EOC, $init_stub );
+#!$^X\n
+%s
 use DBI::Mock;
+use DBI::Test::DSN::Provider;
 
-# XXX how to deal with namespaces here and how do they affect generated test names?
-use DBI::Test::Case::${test_case};
+use ${test_case_ns};
 
-# ${test_case}->run_test;
+my \$test_case_conf = DBI::Test::DSN::Provider->get_dsn("${test_case_ns}");
+${test_case_ns}->run_test(\$test_case_conf);
 EOC
 
     print $tfh "$test_case_code\n";
