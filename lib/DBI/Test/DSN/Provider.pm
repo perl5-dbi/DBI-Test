@@ -16,21 +16,21 @@ sub dsn_plugins
                                                  require     => 1,
                                                  inner       => 0
                                                );
-    my @plugs = grep { $_->can("foo") } $finder->plugins();
+    my @plugs = grep { $_->can("get_dsn_creds") } $finder->plugins();
     $dsn_plugins = \@plugs;
 
     return @{$dsn_plugins};
 }
 
-sub get_dsn
+sub get_dsn_creds
 {
     my ($self, $test_case_ns)  = @_;
     my @plugins = $self->dsn_plugins();
     foreach my $plugin (@plugins)
     {
         # Hash::Merge->merge( ... )
-        my $dsn = $plugin->foo($test_case_ns);
-	$dsn and return $dsn;
+        my $dsn_creds = $plugin->get_dsn_creds($test_case_ns);
+	$dsn_creds and return $dsn_creds;
     }
     return [ 'dbi:NullP:', undef, undef, { ReadOnly => 1 } ];
 }

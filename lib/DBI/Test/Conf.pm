@@ -192,7 +192,7 @@ use DBI::Test::DSN::Provider;
 
 use ${test_case_ns};
 
-my \$test_case_conf = DBI::Test::DSN::Provider->get_dsn("${test_case_ns}");
+my \$test_case_conf = DBI::Test::DSN::Provider->get_dsn_creds("${test_case_ns}");
 ${test_case_ns}->run_test(\$test_case_conf);
 EOC
 
