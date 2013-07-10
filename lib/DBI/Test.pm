@@ -137,7 +137,15 @@ really execute any action.
   $dbh = connect_ok($dsn, $user, $pass, \%attrs, $test_name);
 
 connect_ok invokes DBI-E<gt> and proves the result in an I<ok>.
-The craéated database handle (C<$dbh>) is returned, if any.
+The created database handle (C<$dbh>) is returned, if any.
+
+=head2 connect_not_ok
+
+  $dbh = connect_not_ok($dsn, $user, $pass, \%attrs, $test_name);
+
+connect_not_ok invokes DBI-E<gt> and proves the result in an I<ok>
+(but expects that there is no C<$dsn> returned).  The created database
+handle (C<$dbh>) is returned, if any.
 
 =head2 prepare_ok
 
