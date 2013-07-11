@@ -5,7 +5,7 @@ use warnings;
 
 sub test_cases
 {
-    return qw(basic::connect);
+    return qw(basic::connect basic::disconnect basic::prepare);
 }
 
 =head1 NAME
