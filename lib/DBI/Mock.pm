@@ -217,10 +217,18 @@ sub set_err
         1;
     }
 
+    sub disconnect
+    {
+        $_[0]->STORE( Active => 0 );
+	return 1;
+    }
+
     sub prepare
     {
         my ( $dbh, $stmt, $attrs ) = @_;
         _valid_stmt( $stmt, $attrs ) or return;    # error already set by _valid_stmt
+	defined $attrs or $attrs = {};
+	ref $attrs eq "HASH" or $attrs = {};
         return
           DBI::Mock::_make_handle(
                                    {
@@ -283,6 +291,7 @@ sub set_err
 
     sub execute
     {
+	"0E0"
     }
 
     sub fetchrow_arrayref
