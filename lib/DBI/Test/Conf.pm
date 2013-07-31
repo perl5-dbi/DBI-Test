@@ -7,16 +7,15 @@ use Carp qw(croak);
 use Config;
 
 use Cwd            ();
+use Data::Dumper   ();
 use File::Basename ();
 use File::Path     ();
 use File::Spec     ();
 
-use Module::Pluggable::Object ();
+use DBI::Mock      ();
+use DBI::Test::DSN::Provider ();
 
-BEGIN
-{
-    eval { require DBI; };
-}
+use Module::Pluggable::Object ();
 
 my $cfg_plugins;
 
@@ -102,6 +101,36 @@ sub alltests
     return @alltests;
 }
 
+sub alldrivers
+{
+    # XXX restrict by config file !
+    my @drivers = grep { $_ !~ m/^Gofer|Multi|Multiplex|Proxy|Sponge$/ } DBI->available_drivers();
+    # hack around silly DBI behaviour which removes NullP from avail drivers
+    -f $INC{'DBI.pm'} and push(@drivers, "NullP");
+    @drivers;
+}
+
+sub default_dsn_conf
+{
+    my ($self, $driver) = @_;
+
+    $driver => {
+                                category   => "driver",
+                                cat_abbrev => "d",
+                                abbrev     => lc(substr($driver, 0, 1)),
+				driver => "dbi:$driver",
+                                name => "DSN for $driver",
+                              }
+}
+
+sub dsn_conf
+{
+    my ($self, $driver) = @_;
+    my @dsn_providers = grep { $_ =~ m/\b$driver$/ } DBI::Test::DSN::Provider->dsn_plugins();
+    @dsn_providers or return $self->default_dsn_conf($driver);
+    return $dsn_providers[0]->dsn_conf();
+}
+
 sub combine_nk
 {
     my ( $n, $k ) = @_;
@@ -173,7 +202,7 @@ sub cartesian
 
 sub create_test
 {
-    my ( $self, $test_case, $prefix, $test_confs, $options ) = @_;
+    my ( $self, $test_case, $cfg_pfx, $test_confs, $dsn_pfx, $dsn_cred, $options ) = @_;
 
     # simply don't deploy them when you don't want be bothered about them ...
     my $test_base =
@@ -183,8 +212,11 @@ sub create_test
     my $test_dir = File::Basename::dirname($test_file);
 
     $test_file = File::Basename::basename($test_file);
-    $prefix and $test_file = join( "_", $prefix, $test_file );
-    $test_file = File::Spec->catfile( $test_dir, $test_file );
+    my @tf_name_parts;
+    $cfg_pfx and push( @tf_name_parts, $cfg_pfx );
+    $dsn_pfx and push( @tf_name_parts, $dsn_pfx );
+    push( @tf_name_parts, $test_file );
+    $test_file = File::Spec->catfile( $test_dir, join( "_", @tf_name_parts ) );
 
     -d $test_dir or File::Path::make_path($test_dir);
     open( my $tfh, ">", $test_file ) or croak("Cannot open \"$test_file\": $!");
@@ -195,9 +227,10 @@ BEGIN {
 }
 EOS
 
+    my $dsn = Data::Dumper->new( [$dsn_cred] )->Indent(0)->Sortkeys(1)->Quotekeys(0)->Terse(1)->Dump();
     # XXX how to deal with namespaces here and how do they affect generated test names?
     my $test_case_ns = "DBI::Test::Case::$test_case";
-    my $test_case_code = sprintf( <<EOC, $init_stub );
+    my $test_case_code = sprintf( <<EOC, $init_stub, $dsn );
 #!$^X\n
 %s
 use DBI::Mock;
@@ -205,7 +238,7 @@ use DBI::Test::DSN::Provider;
 
 use ${test_case_ns};
 
-my \$test_case_conf = DBI::Test::DSN::Provider->get_dsn_creds("${test_case_ns}");
+my \$test_case_conf = DBI::Test::DSN::Provider->get_dsn_creds("${test_case_ns}", %s);
 ${test_case_ns}->run_test(\$test_case_conf);
 EOC
 
@@ -215,7 +248,7 @@ EOC
     return $test_dir;
 }
 
-sub create_prefixes
+sub create_conf_prefixes
 {
     my ( $self, $allconf ) = @_;
     my %pfx_hlp;
@@ -262,19 +295,108 @@ sub create_prefixes
     return %pfx_lst;
 }
 
+my %dsn_cfg = (
+    dbm => {
+	category   => "driver",
+	cat_abbrev => "d",
+	abbrev     => "d",
+	driver => "dbi:DBM",
+	variants => {
+	    mldbm => {
+		f => { dbm_mldbm => 'FreezeThaw' },
+		d => { dbm_mldbm => 'Data::Dumper' },
+		s => { dbm_mldbm => 'Storable' },
+	    },
+	    type => {
+		s => { dbm_type => 'SDBM_File' },
+		g => { dbm_type => 'GDBM_File' },
+		d => { dbm_type => 'DB_File' },
+		b => { dbm_type => 'BerkeleyDB', dbm_berkeley_flags => '...' }
+	    },
+	},
+	name => "DSN for DBM",
+    },
+    csv => {
+	category   => "driver",
+	cat_abbrev => "d",
+	abbrev     => "c",
+	driver => "dbi:CSV",
+	variants => {
+	    type => {
+		p => { csv_class => 'Text::CSV' },
+		x => { csv_class => 'Text::CSV_XS' },
+	    },
+	},
+	name => "DSN for CSV",
+    },
+);
+
+sub create_driver_prefixes
+{
+    my ( $self, $dsnconf ) = @_;
+    # $dsnconf or $dsnconf = \%dsn_cfg;
+    my %pfx_lst;
+
+    foreach my $dsncfg (values %$dsnconf)
+    {
+	my @creds = @$dsncfg{qw(driver user passwd attrs)};
+	my $pfx = $dsncfg->{cat_abbrev} . "v" . $dsncfg->{abbrev};
+	"HASH" eq ref $creds[3] or $creds[3] = {};
+	$pfx_lst{$pfx} = [ @creds ];
+
+	if( $dsncfg->{variants} )
+	{
+	    my @varvals = values %{$dsncfg->{variants}};
+	    my @variants = cartesian( map { [ keys %{$_} ] } @varvals );
+	    foreach my $variant (@variants)
+	    {
+		my $attrs = { %{$creds[3]}, map { %{ $varvals[$_]->{$variant->[$_]} } } (0 .. $#varvals) };
+		$pfx_lst{$pfx . join("", @$variant)} = [ @creds[0 .. 2], $attrs ];
+	    }
+	}
+    }
+
+    # avoid prefix pollution
+    if( 1 == scalar( keys( %pfx_lst ) ) )
+    {
+	%pfx_lst = ( '' => (values %pfx_lst)[0] );
+    }
+
+    return %pfx_lst;
+}
+
 sub populate_tests
 {
-    my ( $self, $alltests, $allconf, $options ) = @_;
+    my ( $self, $alltests, $allconf, $alldrivers, $options ) = @_;
     my %test_dirs;
 
-    my %pfx_cfgs = $self->create_prefixes($allconf);
-    foreach my $pfx ( keys %pfx_cfgs )
+    my %pfx_cfgs = $self->create_conf_prefixes($allconf);
+    foreach my $test_case (@$alltests)
     {
-        foreach my $test (@$alltests)
-        {
-            my $test_dir = $self->create_test( $test, $pfx, $pfx_cfgs{$pfx}, $options );
-            $test_dirs{$test_dir} = 1;
-        }
+	# XXX how to deal with namespaces here and how do they affect generated test names?
+	my $test_case_ns = "DBI::Test::Case::$test_case";
+	my @test_drivers = @$alldrivers;
+	$test_case_ns->can("filter_drivers")
+	  and @test_drivers = $test_case_ns->filter_drivers(@test_drivers);
+
+	my %dsn_conf;
+	foreach my $test_drv (@test_drivers)
+	{
+	    %dsn_conf = ( %dsn_conf, $self->dsn_conf($test_drv) );
+	}
+	my %pfx_dsns = $self->create_driver_prefixes(\%dsn_conf);
+
+	foreach my $pfx_dsn ( keys %pfx_dsns )
+	{
+	    foreach my $pfx_cfg ( keys %pfx_cfgs )
+	    {
+		my $test_dir = $self->create_test( $test_case,
+						   $pfx_cfg, $pfx_cfgs{$pfx_cfg},
+						   $pfx_dsn, $pfx_dsns{$pfx_dsn},
+						   $options );
+		$test_dirs{$test_dir} = 1;
+	    }
+	}
     }
 
     return map { File::Spec->catfile( $_, "*.t" ) } keys %test_dirs;
@@ -287,8 +409,9 @@ sub setup
     my %allconf = $self->allconf();
     # from DBI::Test::{NameSpace}::List->test_cases()
     my @alltests = $self->alltests();
+    my @alldrivers = $self->alldrivers();
 
-    return $self->populate_tests( \@alltests, \%allconf, \%options );
+    return $self->populate_tests( \@alltests, \%allconf, \@alldrivers, \%options );
 }
 
 =head1 NAME
