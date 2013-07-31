@@ -110,6 +110,9 @@ sub connect
     $drh->connect( $dsn, $user, $pass, $attrs );
 }
 
+sub installed_drivers { %drivers; }
+sub available_drivers { 'NullP' }
+
 our $stderr = 1;
 our $err;
 our $errstr;
