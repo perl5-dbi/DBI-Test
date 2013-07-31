@@ -6,7 +6,7 @@ use ExtUtils::MakeMaker;
 use lib qw(lib);
 use DBI::Test::Conf ();
 
-my @generated_tests = DBI::Test::Conf->setup();
+my @generated_tests = DBI::Test::Conf->setup( AUTHOR_TESTS => 0 );
 
 my %eumm_opt = (
     MIN_PERL_VERSION => '5.008001',

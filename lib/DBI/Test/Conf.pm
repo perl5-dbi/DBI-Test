@@ -162,11 +162,12 @@ sub cartesian
 
 sub create_test
 {
-    my ( $self, $test_case, $prefix, $test_confs ) = @_;
+    my ( $self, $test_case, $prefix, $test_confs, $options ) = @_;
 
-    my $test_file = $test_case;
-    $test_file =~ s,::,/,g;
-    $test_file = File::Spec->catfile( "t", $test_file . ".t" );
+    # simply don't deploy them when you don't want be bothered about them ...
+    my $test_base = (defined($options->{AUTHOR_TESTS}) and $options->{AUTHOR_TESTS}) ? "xt" : "t";
+    (my $test_file = $test_case) =~ s,::,/,g;
+    $test_file = File::Spec->catfile( $test_base, $test_file . ".t" );
     my $test_dir = File::Basename::dirname($test_file);
 
     $test_file = File::Basename::basename($test_file);
@@ -251,7 +252,7 @@ sub create_prefixes
 
 sub populate_tests
 {
-    my ( $self, $alltests, $allconf ) = @_;
+    my ( $self, $alltests, $allconf, $options ) = @_;
     my %test_dirs;
 
     my %pfx_cfgs = $self->create_prefixes($allconf);
@@ -259,7 +260,7 @@ sub populate_tests
     {
         foreach my $test (@$alltests)
         {
-            my $test_dir = $self->create_test( $test, $pfx, $pfx_cfgs{$pfx} );
+            my $test_dir = $self->create_test( $test, $pfx, $pfx_cfgs{$pfx}, $options );
             $test_dirs{$test_dir} = 1;
         }
     }
@@ -269,13 +270,13 @@ sub populate_tests
 
 sub setup
 {
-    my ($self) = @_;
+    my ($self, %options) = @_;
 
     my %allconf = $self->allconf();
     # from DBI::Test::{NameSpace}::List->test_cases()
     my @alltests = $self->alltests();
 
-    return $self->populate_tests( \@alltests, \%allconf );
+    return $self->populate_tests( \@alltests, \%allconf, \%options );
 }
 
 =head1 NAME
