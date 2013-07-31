@@ -13,6 +13,11 @@ use File::Spec     ();
 
 use Module::Pluggable::Object ();
 
+BEGIN
+{
+    eval { require DBI; };
+}
+
 my $cfg_plugins;
 
 sub cfg_plugins
@@ -32,17 +37,23 @@ sub cfg_plugins
 }
 
 my %conf = (
-    default => {
-                 category   => "mock",
-                 cat_abbrev => "m",
-                 abbrev     => "b",
-                 init_stub  => qq(\$ENV{DBI_MOCK} = 1;),
-                 match      => {
-                            general   => qq(require DBI;),
-                            namespace => [""],
-                          },
-                 name => "Unmodified Test",
-               },
+             (
+               -f $INC{'DBI.pm'}
+               ? (
+                   default => {
+                                category   => "mock",
+                                cat_abbrev => "m",
+                                abbrev     => "b",
+                                init_stub  => qq(\$ENV{DBI_MOCK} = 1;),
+                                match      => {
+                                           general   => qq(require DBI;),
+                                           namespace => [""],
+                                         },
+                                name => "Unmodified Test",
+                              }
+                 )
+               : ()
+             )
            );
 
 sub conf { %conf; }
@@ -165,8 +176,9 @@ sub create_test
     my ( $self, $test_case, $prefix, $test_confs, $options ) = @_;
 
     # simply don't deploy them when you don't want be bothered about them ...
-    my $test_base = (defined($options->{AUTHOR_TESTS}) and $options->{AUTHOR_TESTS}) ? "xt" : "t";
-    (my $test_file = $test_case) =~ s,::,/,g;
+    my $test_base =
+      ( defined( $options->{AUTHOR_TESTS} ) and $options->{AUTHOR_TESTS} ) ? "xt" : "t";
+    ( my $test_file = $test_case ) =~ s,::,/,g;
     $test_file = File::Spec->catfile( $test_base, $test_file . ".t" );
     my $test_dir = File::Basename::dirname($test_file);
 
@@ -270,7 +282,7 @@ sub populate_tests
 
 sub setup
 {
-    my ($self, %options) = @_;
+    my ( $self, %options ) = @_;
 
     my %allconf = $self->allconf();
     # from DBI::Test::{NameSpace}::List->test_cases()
