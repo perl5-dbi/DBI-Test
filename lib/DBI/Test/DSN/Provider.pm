@@ -24,14 +24,15 @@ sub dsn_plugins
 
 sub get_dsn_creds
 {
-    my ($self, $test_case_ns)  = @_;
+    my ($self, $test_case_ns, $default_creds)  = @_;
     my @plugins = $self->dsn_plugins();
     foreach my $plugin (@plugins)
     {
         # Hash::Merge->merge( ... )
-        my $dsn_creds = $plugin->get_dsn_creds($test_case_ns);
+        my $dsn_creds = $plugin->get_dsn_creds($test_case_ns, $default_creds);
 	$dsn_creds and return $dsn_creds;
     }
+    $default_creds and return $default_creds;
     return [ 'dbi:NullP:', undef, undef, { ReadOnly => 1 } ];
 }
 

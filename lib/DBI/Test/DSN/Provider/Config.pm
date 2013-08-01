@@ -146,7 +146,7 @@ sub get_config
 
 sub get_dsn_creds
 {
-    my ( $self, $test_case_ns ) = @_;
+    my ( $self, $test_case_ns, $default_creds ) = @_;
     my %connect_details = ();
     $test_case_ns->can("connect_details")
       and %connect_details =
