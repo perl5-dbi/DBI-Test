@@ -34,11 +34,11 @@ sub get_dsn_creds
     my ($self, $test_case_ns, $default_creds) = @_;
     $default_creds or return;
     $default_creds->[0] or return;
-    (my $driver = $default_creds->[0]) =~ s/^dbi(:\w*?(?:\((.*?)\))?):/DBD::$1/i;
+    (my $driver = $default_creds->[0]) =~ s/^dbi:(\w*?)(?:\((.*?)\))?:/DBD::$1/i;
     # my $drh = $DBI::installed_drh{$driver} || $class->install_driver($driver)
     #   or die "panic: $class->install_driver($driver) failed";    
-    eval { require $driver; };
-    $@ and carp $@;
+    eval "require $driver;";
+    $@ and return;
     $driver->isa("DBD::File") or return;
 
     my @creds = @$default_creds;
