@@ -3,6 +3,8 @@ package DBI::Test::Case::basic::connect;
 use strict;
 use warnings;
 
+use parent qw(DBI::Test::Case);
+
 use Test::More;
 use DBI::Test;
 
@@ -29,10 +31,10 @@ sub run_test
             #Check the $dbh->{Attribute} and $dbh->FETCH('Attribute') interface
             foreach my $attr ( keys %{ $DB_CREDS[3] } )
             {
-                cmp_ok( $dbh->{$attr}, '==',
+                is( $dbh->{$attr},
                         $DB_CREDS[3]->{$attr},
                         $attr . ' == ' . $DB_CREDS[3]->{$attr} );
-                cmp_ok( $dbh->FETCH($attr), '==',
+                is( $dbh->FETCH($attr),
                         $DB_CREDS[3]->{$attr},
                         $attr . ' == ' . $DB_CREDS[3]->{$attr} );
             }

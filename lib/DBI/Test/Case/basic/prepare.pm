@@ -2,6 +2,9 @@ package DBI::Test::Case::basic::prepare;
 
 use strict;
 use warnings;
+
+use parent qw(DBI::Test::Case);
+
 use Test::More;
 
 sub run_test

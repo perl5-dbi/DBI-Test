@@ -3,6 +3,8 @@ package DBI::Test::Case::basic::disconnect;
 use strict;
 use warnings;
 
+use parent qw(DBI::Test::Case);
+
 use Test::More;
 use DBI::Test;
 
