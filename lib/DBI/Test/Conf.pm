@@ -118,7 +118,7 @@ sub default_dsn_conf
                                 category   => "driver",
                                 cat_abbrev => "d",
                                 abbrev     => lc(substr($driver, 0, 1)),
-				driver => "dbi:$driver",
+				driver => "dbi:$driver:",
                                 name => "DSN for $driver",
                               }
 }
@@ -300,7 +300,7 @@ my %dsn_cfg = (
 	category   => "driver",
 	cat_abbrev => "d",
 	abbrev     => "d",
-	driver => "dbi:DBM",
+	driver => "dbi:DBM:",
 	variants => {
 	    mldbm => {
 		f => { dbm_mldbm => 'FreezeThaw' },
@@ -320,7 +320,7 @@ my %dsn_cfg = (
 	category   => "driver",
 	cat_abbrev => "d",
 	abbrev     => "c",
-	driver => "dbi:CSV",
+	driver => "dbi:CSV:",
 	variants => {
 	    type => {
 		p => { csv_class => 'Text::CSV' },
