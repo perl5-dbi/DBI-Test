@@ -118,8 +118,17 @@ sub errstr { $errstr }
 sub set_err
 {
     my ( $ref, $_err, $_errstr ) = @_;
+    $_err or do {
+	$err = undef;
+	$errstr = '';
+	return;
+    };
     $err    = $_err;
     $errstr = $_errstr;
+    Test::More::diag("Raise: ", $ref->{RaiseError});
+    $ref->{RaiseError} and $errstr and Carp::croak($errstr);
+    Test::More::diag("Print: ", $ref->{PrintError});
+    $ref->{PrintError} and $errstr and Carp::carp($errstr);
     return;
 }
 
@@ -165,8 +174,15 @@ sub set_err
     sub set_err
     {
         my ( $ref, $_err, $_errstr ) = @_;
+	$_err or do {
+	    $err = undef;
+	    $errstr = '';
+	    return;
+	};
         $err    = $_err;
         $errstr = $_errstr;
+	$ref->{RaiseError} and $errstr and Carp::croak($errstr);
+	$ref->{PrintError} and $errstr and Carp::carp($errstr);
         return;
     }
 
@@ -248,7 +264,7 @@ sub set_err
     {
         my ( $dbh, $statement, $attr, @params ) = @_;
         my $sth = $dbh->prepare( $statement, $attr ) or return undef;
-        $sth->execute(@params) or return undef;
+        $sth->execute(@params) or return $dbh->set_err( $sth->err, $sth->errstr );
         my $rows = $sth->rows;
         ( $rows == 0 ) ? "0E0" : $rows;
     }
@@ -339,8 +355,17 @@ sub set_err
     sub set_err
     {
         my ( $ref, $_err, $_errstr ) = @_;
+	$_err or do {
+	    $err = undef;
+	    $errstr = '';
+	    return;
+	};
         $err    = $_err;
         $errstr = $_errstr;
+	defined $errstr or Carp::croak("Undefined \$errstr");
+	$ref->{RaiseError} and $errstr and Carp::croak($errstr);
+	Test::More::diag("Print: ", $ref->{PrintError});
+	$ref->{PrintError} and $errstr and Carp::carp($errstr);
         return;
     }
 
@@ -379,9 +404,17 @@ sub set_err
     sub set_err
     {
         my ( $ref, $_err, $_errstr ) = @_;
+	$_err or do {
+	    $err = undef;
+	    $errstr = '';
+	    return;
+	};
         $err    = $_err;
         $errstr = $_errstr;
-        return;
+	defined $errstr or Carp::croak("Undefined \$errstr");
+	$ref->{RaiseError} and $errstr and Carp::croak($errstr);
+	Test::More::diag("Print: ", $ref->{PrintError});
+	$ref->{PrintError} and $errstr and Carp::carp($errstr);
     }
 
     sub bind_col
@@ -389,11 +422,11 @@ sub set_err
         my ( $h, $col, $value_ref, $from_bind_columns ) = @_;
         my $fbav = $h->{'_fbav'} ||= dbih_setup_fbav($h);    # from _get_fbav()
         my $num_of_fields = @$fbav;
-        DBI::croak("bind_col: column $col is not a valid column (1..$num_of_fields)")
+        Carp::croak("bind_col: column $col is not a valid column (1..$num_of_fields)")
           if $col < 1
           or $col > $num_of_fields;
         return 1 if not defined $value_ref;                  # ie caller is just trying to set TYPE
-        DBI::croak("bind_col($col,$value_ref) needs a reference to a scalar")
+        Carp::croak("bind_col($col,$value_ref) needs a reference to a scalar")
           unless ref $value_ref eq 'SCALAR';
         $h->{'_bound_cols'}->[ $col - 1 ] = $value_ref;
         return 1;
