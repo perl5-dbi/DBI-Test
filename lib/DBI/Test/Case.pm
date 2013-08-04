@@ -13,7 +13,7 @@ sub is_test_for_mocked
 
     # allow DBD::NullP for DBI::Mock
     return ( $INC{'DBI.pm'} eq "mocked" and !scalar(@$test_confs) )
-      or grep { $_->{cat_abbrev} eq "m" } @$test_confs;
+      || scalar grep { $_->{cat_abbrev} eq "m" } @$test_confs;
 }
 
 sub is_test_for_dbi
@@ -21,7 +21,7 @@ sub is_test_for_dbi
     my ( $self, $test_confs ) = @_;
 
     return ( -f $INC{'DBI.pm'} and !scalar(@$test_confs) )
-      or grep { $_->{cat_abbrev} eq "z" } @$test_confs;
+      || scalar grep { $_->{cat_abbrev} eq "z" } @$test_confs;
 }
 
 sub filter_drivers
@@ -33,14 +33,14 @@ sub filter_drivers
           "ARRAY" eq ref( $options->{CONTAINED_DBDS} )
           ? @{ $options->{CONTAINED_DBDS} }
           : ( $options->{CONTAINED_DBDS} );
-	my @supported_dbds;
+        my @supported_dbds;
 
-	foreach my $test_dbd (@test_dbds)
-	{
-	    @supported_dbds = (@supported_dbds, grep { $test_dbd eq $_ } @contained_dbds);
-	}
+        foreach my $test_dbd (@test_dbds)
+        {
+            @supported_dbds = ( @supported_dbds, grep { $test_dbd eq $_ } @contained_dbds );
+        }
 
-	return @supported_dbds;
+        return @supported_dbds;
     }
 
     return @test_dbds;
