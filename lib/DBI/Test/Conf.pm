@@ -414,7 +414,7 @@ sub populate_tests
 	}
     }
 
-    return map { File::Spec->catfile( $_, "*.t" ) } keys %test_dirs;
+    return keys %test_dirs;
 }
 
 sub setup
@@ -426,7 +426,16 @@ sub setup
     my @alltests = $self->alltests();
     my @alldrivers = $self->alldrivers();
 
-    return $self->populate_tests( \@alltests, \%allconf, \@alldrivers, \%options );
+    my @gen_test_dirs = $self->populate_tests( \@alltests, \%allconf, \@alldrivers, \%options );
+
+    if($options{SKIP_FILE})
+    {
+	open(my $fh, ">", $options{SKIP_FILE}) or croak("Can't open $options{SKIP_FILE} for writing: $!");
+	print $fh map { $_ . "/.*\\.t\n"; } @gen_test_dirs;
+	close($fh);
+    }
+
+    return map { File::Spec->catfile( $_, "*.t" ) } @gen_test_dirs;
 }
 
 =head1 NAME

@@ -1,7 +1,9 @@
 ChangeLog
+DBI-TEST.SKIP
 DESIGN.md
 lib/DBI/Mock.pm
 lib/DBI/Test.pm
+lib/DBI/Test/Case.pm
 lib/DBI/Test/Case/attributes/PrintError.pm
 lib/DBI/Test/Case/attributes/Warn.pm
 lib/DBI/Test/Case/basic/bind_columns.pm
@@ -20,6 +22,3 @@ lib/DBI/Test/List.pm
 Makefile.PL
 MANIFEST
 README.md
-xt/00_pod.t
-xt/01_pod.t
-xt/10_perlversion.t
