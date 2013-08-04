@@ -3,6 +3,8 @@ package DBI::Test::DSN::Provider::Dir;
 use strict;
 use warnings;
 
+use parent qw(DBI::Test::DSN::Provider::Base);
+
 use File::Basename;
 use File::Path;
 use File::Spec;
@@ -34,7 +36,7 @@ sub get_dsn_creds
     my ($self, $test_case_ns, $default_creds) = @_;
     $default_creds or return;
     $default_creds->[0] or return;
-    (my $driver = $default_creds->[0]) =~ s/^dbi:(\w*?)(?:\((.*?)\))?:/DBD::$1/i;
+    (my $driver = $default_creds->[0]) =~ s/^dbi:(\w*?)(?:\((.*?)\))?:.*/DBD::$1/i;
     # my $drh = $DBI::installed_drh{$driver} || $class->install_driver($driver)
     #   or die "panic: $class->install_driver($driver) failed";    
     eval "require $driver;";

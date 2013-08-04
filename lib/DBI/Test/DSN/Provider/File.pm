@@ -3,6 +3,8 @@ package DBI::Test::DSN::Provider::File;
 use strict;
 use warnings;
 
+use parent qw(DBI::Test::DSN::Provider::Base);
+
 1;
 
 =head1 NAME

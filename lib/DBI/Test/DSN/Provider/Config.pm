@@ -3,6 +3,8 @@ package DBI::Test::DSN::Provider::Config;
 use strict;
 use warnings;
 
+use parent qw(DBI::Test::DSN::Provider::Base);
+
 require Cwd;
 require File::Spec;
 
@@ -36,6 +38,8 @@ BEGIN
 
     1;    # shadow whatever we did :D
 }
+
+sub relevance { 100 };
 
 $have_file_configdir
   or *find_config_dirs = sub {

@@ -16,7 +16,7 @@ sub dsn_plugins
                                                  require     => 1,
                                                  inner       => 0
                                                );
-    my @plugs = grep { $_->can("get_dsn_creds") } $finder->plugins();
+    my @plugs = grep { $_->isa("DBI::Test::DSN::Provider::Base") and $_->can("get_dsn_creds") } $finder->plugins();
     $dsn_plugins = \@plugs;
 
     return @{$dsn_plugins};
@@ -25,7 +25,7 @@ sub dsn_plugins
 sub get_dsn_creds
 {
     my ($self, $test_case_ns, $default_creds)  = @_;
-    my @plugins = $self->dsn_plugins();
+    my @plugins = sort { $a->relevance <=> $b->relevance } grep { $_->relevance > 0 } $self->dsn_plugins();
     foreach my $plugin (@plugins)
     {
         # Hash::Merge->merge( ... )
