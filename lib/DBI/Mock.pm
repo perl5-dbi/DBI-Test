@@ -8,7 +8,7 @@ use Carp qw(carp confess);
 sub _set_isa
 {
     my ( $classes, $topclass ) = @_;
-    foreach my $suffix ( '::dr', '::db', '::st' )
+    foreach my $suffix ( '::db', '::st' )
     {
         my $previous = $topclass || 'DBI';    # trees are rooted here
         foreach my $class (@$classes)
@@ -28,7 +28,7 @@ sub _make_root_class
     my ( $ref, $root ) = @_;
     $root or return;
 
-    my $c = ref $ref;
+    (my $c = ref $ref) =~ s/::dr$//g;
 
     no strict 'refs';
     eval qq{
@@ -43,9 +43,7 @@ sub _make_root_class
     }
     else
     {
-        $ref->{RootClass} = $root;
         _set_isa( [$root], 'DBI::Mock' );
-        bless( $ref, $root );
     }
 
     return;
@@ -87,9 +85,6 @@ sub _make_handle
 {
     my ( $ref, $name ) = @_;
     my $h = bless( { %default_attrs, %$ref }, $name );
-    exists $h->{attrs}
-      and exists $h->{attrs}->{RootClass}
-      and _make_root_class( $h, delete $h->{attrs}->{RootClass} );
     return $h;
 }
 
@@ -146,19 +141,19 @@ sub set_err
     sub connect
     {
         my ( $drh, $dbname, $user, $auth, $attrs ) = @_;
-        return
-          DBI::Mock::_make_handle(
+	exists $drh->{RootClass}
+	  and DBI::Mock::_make_root_class( $drh, $drh->{RootClass} );
+	my $class = $drh->{RootClass} ? $drh->{RootClass} . "::db" : "DBI::db";
+        my $dbh = DBI::Mock::_make_handle(
                                    {
                                       %default_db_attrs,
                                       %$attrs,
-                                      (
-                                         defined $drh->{RootClass}
-                                         ? ( RootClass => $drh->{RootClass} )
-                                         : ()
-                                      )
+				      drh => $drh
                                    },
-                                   "DBI::db"
+                                   $class
                                  );
+
+	return $dbh;
     }
 
     our $err;
@@ -223,38 +218,116 @@ sub set_err
     sub disconnect
     {
         $_[0]->STORE( Active => 0 );
-	return 1;
+        return 1;
     }
 
     sub prepare
     {
         my ( $dbh, $stmt, $attrs ) = @_;
         _valid_stmt( $stmt, $attrs ) or return;    # error already set by _valid_stmt
-	defined $attrs or $attrs = {};
-	ref $attrs eq "HASH" or $attrs = {};
-        return
-          DBI::Mock::_make_handle(
+        defined $attrs or $attrs = {};
+        ref $attrs eq "HASH" or $attrs = {};
+	my $class = $dbh->{drh}->{RootClass} ? $dbh->{drh}->{RootClass} . "::st" : "DBI::st";
+        my $sth = DBI::Mock::_make_handle(
                                    {
                                       %default_st_attrs,
                                       %$attrs,
                                       Statement => $stmt,
-                                      (
-                                         defined $dbh->{RootClass}
-                                         ? ( RootClass => $dbh->{RootClass} )
-                                         : ()
-                                      )
+                                      dbh => $dbh,
                                    },
-                                   "DBI::st"
+                                  $class
                                  );
+
+	return $sth;
     }
+
+    # I don't had a clue how to implement that better
+    # finally - they are reduce to the max and don't interfer with anything around ...
 
     sub do
     {
-        my ( $dbh, $stmt, $attr, @bind_values ) = @_;
-        my $sth = $dbh->prepare( $stmt, $attr ) or return;
-        my $rows = $sth->execute(@bind_values);
-        $rows or return $dbh->set_err( $DBI::stderr, $sth->errstr );
-        $rows;
+        my ( $dbh, $statement, $attr, @params ) = @_;
+        my $sth = $dbh->prepare( $statement, $attr ) or return undef;
+        $sth->execute(@params) or return undef;
+        my $rows = $sth->rows;
+        ( $rows == 0 ) ? "0E0" : $rows;
+    }
+
+    sub _do_selectrow
+    {
+        my ( $method, $dbh, $stmt, $attr, @bind ) = @_;
+        my $sth = ( ( ref $stmt ) ? $stmt : $dbh->prepare( $stmt, $attr ) )
+          or return;
+        $sth->execute(@bind)
+          or return;
+        my $row = $sth->$method()
+          and $sth->finish;
+        return $row;
+    }
+
+    sub selectrow_hashref { return _do_selectrow( 'fetchrow_hashref', @_ ); }
+
+    sub selectrow_arrayref { return _do_selectrow( 'fetchrow_arrayref', @_ ); }
+
+    sub selectrow_array
+    {
+        my $row = _do_selectrow( 'fetchrow_arrayref', @_ ) or return;
+        return $row->[0] unless wantarray;
+        return @$row;
+    }
+
+    sub selectall_arrayref
+    {
+        my ( $dbh, $stmt, $attr, @bind ) = @_;
+        my $sth = ( ref $stmt ) ? $stmt : $dbh->prepare( $stmt, $attr )
+          or return;
+        $sth->execute(@bind) || return;
+        my $slice = $attr->{Slice};    # typically undef, else hash or array ref
+        if ( !$slice and $slice = $attr->{Columns} )
+        {
+            if ( ref $slice eq 'ARRAY' )
+            {                          # map col idx to perl array idx
+                $slice = [ @{ $attr->{Columns} } ];    # take a copy
+                for (@$slice) { $_-- }
+            }
+        }
+        my $rows = $sth->fetchall_arrayref( $slice, my $MaxRows = $attr->{MaxRows} );
+        $sth->finish if defined $MaxRows;
+        return $rows;
+    }
+
+    sub selectall_hashref
+    {
+        my ( $dbh, $stmt, $key_field, $attr, @bind ) = @_;
+        my $sth = ( ref $stmt ) ? $stmt : $dbh->prepare( $stmt, $attr );
+        return unless $sth;
+        $sth->execute(@bind) || return;
+        return $sth->fetchall_hashref($key_field);
+    }
+
+    sub selectcol_arrayref
+    {
+        my ( $dbh, $stmt, $attr, @bind ) = @_;
+        my $sth = ( ref $stmt ) ? $stmt : $dbh->prepare( $stmt, $attr );
+        return unless $sth;
+        $sth->execute(@bind) || return;
+        my @columns = ( $attr->{Columns} ) ? @{ $attr->{Columns} } : (1);
+        my @values  = (undef) x @columns;
+        my $idx     = 0;
+        for (@columns)
+        {
+            $sth->bind_col( $_, \$values[ $idx++ ] ) || return;
+        }
+        my @col;
+        if ( my $max = $attr->{MaxRows} )
+        {
+            push @col, @values while 0 < $max-- && $sth->fetch;
+        }
+        else
+        {
+            push @col, @values while $sth->fetch;
+        }
+        return \@col;
     }
 
     our $err;
@@ -294,11 +367,7 @@ sub set_err
 
     sub execute
     {
-	"0E0"
-    }
-
-    sub fetchrow_arrayref
-    {
+        "0E0";
     }
 
     our $err;
@@ -313,6 +382,21 @@ sub set_err
         $err    = $_err;
         $errstr = $_errstr;
         return;
+    }
+
+    sub bind_col
+    {
+        my ( $h, $col, $value_ref, $from_bind_columns ) = @_;
+        my $fbav = $h->{'_fbav'} ||= dbih_setup_fbav($h);    # from _get_fbav()
+        my $num_of_fields = @$fbav;
+        DBI::croak("bind_col: column $col is not a valid column (1..$num_of_fields)")
+          if $col < 1
+          or $col > $num_of_fields;
+        return 1 if not defined $value_ref;                  # ie caller is just trying to set TYPE
+        DBI::croak("bind_col($col,$value_ref) needs a reference to a scalar")
+          unless ref $value_ref eq 'SCALAR';
+        $h->{'_bound_cols'}->[ $col - 1 ] = $value_ref;
+        return 1;
     }
 
     sub FETCH
