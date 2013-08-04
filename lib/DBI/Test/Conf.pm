@@ -3,7 +3,7 @@ package DBI::Test::Conf;
 use strict;
 use warnings;
 
-use Carp qw(croak);
+use Carp qw(carp croak);
 use Config;
 
 use Cwd            ();
@@ -375,9 +375,20 @@ sub populate_tests
     {
 	# XXX how to deal with namespaces here and how do they affect generated test names?
 	my $test_case_ns = "DBI::Test::Case::$test_case";
+	eval "require $test_case_ns;";
+	$@ and carp $@ and next; # don't create tests for broken test cases
 	my @test_drivers = @$alldrivers;
 	$test_case_ns->can("filter_drivers")
-	  and @test_drivers = $test_case_ns->filter_drivers(@test_drivers);
+	  and @test_drivers = $test_case_ns->filter_drivers($options, @test_drivers);
+	@test_drivers or next;
+
+	$test_case_ns->can("supported_variant")
+	  or eval qq/
+	      package #
+	        $test_case_ns;
+	    sub supported_variant { 1 };
+	    1;
+	  /;
 
 	my %dsn_conf;
 	foreach my $test_drv (@test_drivers)
@@ -390,6 +401,10 @@ sub populate_tests
 	{
 	    foreach my $pfx_cfg ( keys %pfx_cfgs )
 	    {
+		$test_case_ns->supported_variant( $test_case,
+						   $pfx_cfg, $pfx_cfgs{$pfx_cfg},
+						   $pfx_dsn, $pfx_dsns{$pfx_dsn},
+						   $options ) or next;
 		my $test_dir = $self->create_test( $test_case,
 						   $pfx_cfg, $pfx_cfgs{$pfx_cfg},
 						   $pfx_dsn, $pfx_dsns{$pfx_dsn},
