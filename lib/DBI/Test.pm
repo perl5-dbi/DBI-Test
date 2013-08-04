@@ -29,7 +29,7 @@ sub connect_ok
     my $tb = $CLASS->builder();
     my $dbh = DBI->connect($data_source, $username, $auth, $attr);
     # maybe use Test::More::isa_ok directly from here?
-    $tb->ok($dbh, $testname) and $tb->ok($dbh->isa("DBI::db"), $testname) and return $dbh;
+    $tb->ok($dbh, $testname) and $tb->ok($dbh->isa("DBI::db"), "$testname delivers a DBI::db") and return $dbh;
     return;
 }
 
@@ -47,7 +47,7 @@ sub prepare_ok
     my ($dbh, $stmt, $attr, $testname) = @_;
     my $tb = $CLASS->builder();
     my $sth = $dbh->prepare($stmt, $attr);
-    $tb->ok($sth, $testname) and  $tb->ok($sth->isa("DBI::st"), $testname) and return $sth;
+    $tb->ok($sth, $testname) and  $tb->ok($sth->isa("DBI::st"), "$testname delibers DBI::st") and return $sth;
     return;
 }
 
