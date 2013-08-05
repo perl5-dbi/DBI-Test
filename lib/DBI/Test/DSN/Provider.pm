@@ -12,30 +12,35 @@ sub dsn_plugins
     defined $dsn_plugins and return @{$dsn_plugins};
 
     my $finder = Module::Pluggable::Object->new(
-                                                 search_path => ["DBI::Test::DSN::Provider"],
-                                                 require     => 1,
-                                                 inner       => 0
+                                                 search_path => ["DBI::Test"],
+                                                 only => qr/DBI::Test::(?:\w+::)*DSN::Provider.*/,
+                                                 require => 1,
+                                                 inner   => 0
                                                );
-    my @plugs = grep { $_->isa("DBI::Test::DSN::Provider::Base") and $_->can("get_dsn_creds") } $finder->plugins();
+    my @plugs =
+      grep { $_->isa("DBI::Test::DSN::Provider::Base") and $_->can("get_dsn_creds") }
+      $finder->plugins();
     $dsn_plugins = \@plugs;
 
-    return @{$dsn_plugins};
+    return @$dsn_plugins;
 }
 
 sub get_dsn_creds
 {
-    my ($self, $test_case_ns, $default_creds)  = @_;
-    my @plugins = sort { $a->relevance <=> $b->relevance } grep { $_->relevance > 0 } $self->dsn_plugins();
+    my ( $self, $test_case_ns, $default_creds ) = @_;
+    my @plugins = sort {
+        $b->relevance( $test_case_ns, $default_creds )
+          <=> $a->relevance( $test_case_ns, $default_creds )
+    } grep { $_->relevance( $test_case_ns, $default_creds ) > 0 } $self->dsn_plugins();
     foreach my $plugin (@plugins)
     {
         # Hash::Merge->merge( ... )
-        my $dsn_creds = $plugin->get_dsn_creds($test_case_ns, $default_creds);
-	$dsn_creds and return $dsn_creds;
+        my $dsn_creds = $plugin->get_dsn_creds( $test_case_ns, $default_creds );
+        $dsn_creds and return $dsn_creds;
     }
     $default_creds and return $default_creds;
     return [ 'dbi:NullP:', undef, undef, { ReadOnly => 1 } ];
 }
-
 
 1;
 
