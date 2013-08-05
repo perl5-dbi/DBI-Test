@@ -12,8 +12,9 @@ use parent qw(Test::Builder::Module Exporter);
 
 our $VERSION = "0.001";
 
-our @EXPORT = qw(connect_ok connect_not_ok prepare_ok execute_ok);
-our @EXPORT_OK = qw(connect_ok connect_not_ok prepare_ok execute_ok);
+# XXX improve / beautify ... map {} + categories ...
+our @EXPORT = qw(connect_ok connect_not_ok prepare_ok execute_ok execute_not_ok do_ok do_not_ok);
+our @EXPORT_OK = qw(connect_ok connect_not_ok prepare_ok execute_ok execute_not_ok do_ok do_not_ok);
 
 my $CLASS = __PACKAGE__;
 
@@ -44,10 +45,11 @@ sub connect_not_ok
 
 sub prepare_ok
 {
-    my ($dbh, $stmt, $attr, $testname) = @_;
+    my ($dbh, @vals) = @_;
+    my $testname = pop(@vals);
     my $tb = $CLASS->builder();
-    my $sth = $dbh->prepare($stmt, $attr);
-    $tb->ok($sth, $testname) and  $tb->ok($sth->isa("DBI::st"), "$testname delibers DBI::st") and return $sth;
+    my $sth = $dbh->prepare(@vals);
+    $tb->ok($sth, $testname) and  $tb->ok($sth->isa("DBI::st"), "$testname delivers DBI::st") and return $sth;
     return;
 }
 
@@ -58,6 +60,36 @@ sub execute_ok
     my $tb = $CLASS->builder();
     my $rv = $sth->execute(@vals);
     $tb->ok($rv, $testname);
+    return $rv;
+}
+
+sub execute_not_ok
+{
+    my ($sth, @vals) = @_;
+    my $testname = pop(@vals);
+    my $tb = $CLASS->builder();
+    my $rv = $sth->execute(@vals);
+    $tb->ok(!defined($rv),, $testname);
+    return $rv;
+}
+
+sub do_ok
+{
+    my ($dbh, @vals) = @_;
+    my $testname = pop(@vals);
+    my $tb = $CLASS->builder();
+    my $rv = $dbh->do(@vals);
+    $tb->ok($rv, $testname);
+    return $rv;
+}
+
+sub do_not_ok
+{
+    my ($dbh, @vals) = @_;
+    my $testname = pop(@vals);
+    my $tb = $CLASS->builder();
+    my $rv = $dbh->do(@vals);
+    $tb->ok(!defined($rv),, $testname);
     return $rv;
 }
 
@@ -162,6 +194,30 @@ if any.
 
 execute_ok invokes $sth->excute and proves the result via I<ok>.
 The value got from $sth-E<gt>execute is returned.
+
+=head2 execute_not_ok
+
+  $rv = execute_not_ok($sth, $test_name);
+  $rv = execute_not_ok($sth, @bind_values, $test_name);
+
+execute_not_ok invokes $sth->excute and proves the result via I<is(undef)>.
+The value got from $sth-E<gt>execute is returned.
+
+=head2 do_ok
+
+  $rv = do_ok($dbh, $test_name);
+  $rv = do_ok($dbh, @bind_values, $test_name);
+
+do_ok invokes $dbh->do and proves the result via I<ok>.
+The value got from $dbh-E<gt>do / $sth-E<gt>execute is returned.
+
+=head2 do_not_ok
+
+  $rv = do_not_ok($dbh, $test_name);
+  $rv = do_not_ok($dbh, @bind_values, $test_name);
+
+do_not_ok invokes $dbh->do and proves the result via I<is(undef)>.
+The value got from $dbh-E<gt>do / $sth-E<gt>execute is returned.
 
 =head1 GOAL
 
