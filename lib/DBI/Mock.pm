@@ -483,10 +483,11 @@ sub _miss_dbi
     defined $_have_dbi and return !$_have_dbi;
     $_have_dbi = 0;
     eval qq{
+	\$ENV{DBI_PUREPERL} = 2; # we only want to know if it's there ...
 	require DBI;
 	\$_have_dbi = 1;
     };
-    return !$_have_dbi;
+    return !($_have_dbi = exists $INC{'DBI.pm'}); # XXX maybe riba can help to unload ...
 }
 
 BEGIN
