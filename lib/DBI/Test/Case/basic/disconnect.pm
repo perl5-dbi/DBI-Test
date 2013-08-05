@@ -25,9 +25,11 @@ sub run_test
         ok( !$dbh->{Active}, 'dbh is inactive' );
     }
 
+    SKIP:
     {    #Test that disconnect prints a warning if it disconncets on an active statementhandler
             #Q: Does it print an warning even though PrintWarn is false?
         my $dbh = connect_ok(@DB_CREDS, "basic connect");
+	skip("Invalid SQL for some engines", 1);
 
         #Create  statementhandler
         my $sth = prepare_ok( $dbh, $SQLS{SELECT}, undef, "prepare $SQLS{SELECT}");    #TODO : some SELECT should go inside here, or?
