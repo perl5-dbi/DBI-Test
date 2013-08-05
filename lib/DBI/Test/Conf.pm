@@ -125,11 +125,11 @@ sub default_dsn_conf
 
 sub dsn_conf
 {
-    my ( $self, $driver ) = @_;
+    my ( $self, $driver, $test_case_ns ) = @_;
     my @dsn_providers =
       grep { $_ =~ m/\b$driver$/ && $_->can("dsn_conf") } DBI::Test::DSN::Provider->dsn_plugins();
     @dsn_providers or return $self->default_dsn_conf($driver);
-    return $dsn_providers[0]->dsn_conf();
+    return $dsn_providers[0]->dsn_conf($test_case_ns);
 }
 
 sub combine_nk
@@ -221,19 +221,40 @@ sub create_test
 
     -d $test_dir or File::Path::make_path($test_dir);
     open( my $tfh, ">", $test_file ) or croak("Cannot open \"$test_file\": $!");
-    my $init_stub = join( "\n", map { $_->{init_stub} } @$test_confs );
+    my $init_stub = join(
+        ";\n",
+        map {
+            "ARRAY" eq ref( $_->{init_stub} )
+              ? join( ";\n", @{ $_->{init_stub} } )
+              : $_->{init_stub}
+          } grep { $_->{init_stub} } @$test_confs
+    );
     $init_stub and $init_stub = sprintf( <<EOS, $init_stub );
 BEGIN {
 %s
 }
 EOS
+    my $cleanup_stub = join(
+        ";\n",
+        map {
+            "ARRAY" eq ref( $_->{cleanup_stub} )
+              ? join( ";\n", @{ $_->{cleanup_stub} } )
+              : $_->{cleanup_stub}
+          } grep { $_->{cleanup_stub} } @$test_confs
+    );
+    $cleanup_stub and $cleanup_stub = sprintf( <<EOC, $cleanup_stub );
+END {
+%s
+}
+EOC
 
     my $dsn =
       Data::Dumper->new( [$dsn_cred] )->Indent(0)->Sortkeys(1)->Quotekeys(0)->Terse(1)->Dump();
     # XXX how to deal with namespaces here and how do they affect generated test names?
     my $test_case_ns = "DBI::Test::Case::$test_case";
-    my $test_case_code = sprintf( <<EOC, $init_stub, $dsn );
+    my $test_case_code = sprintf( <<EOC, $init_stub, $cleanup_stub, $dsn );
 #!$^X\n
+%s
 %s
 use DBI::Mock;
 use DBI::Test::DSN::Provider;
@@ -401,7 +422,7 @@ sub populate_tests
         my %dsn_conf;
         foreach my $test_drv (@test_drivers)
         {
-            %dsn_conf = ( %dsn_conf, $self->dsn_conf($test_drv) );
+            %dsn_conf = ( %dsn_conf, $self->dsn_conf( $test_drv, $test_case_ns ) );
         }
         my %pfx_dsns = $self->create_driver_prefixes( \%dsn_conf );
 
