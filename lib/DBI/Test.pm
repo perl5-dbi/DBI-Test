@@ -242,7 +242,7 @@ We are discussing issues on the DBI development mailing list 1) and on IRC 2)
 
 You can find documentation for this module with the perldoc command.
 
-    perldoc SQL::Statement
+    perldoc DBI::Test
 
 You can also look for information at:
 
