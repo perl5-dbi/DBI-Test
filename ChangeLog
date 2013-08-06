@@ -1,3 +1,9 @@
+0.002 - ** Aug 2013
+
+    * Use DBI_USER/DBI_PASS and ORACLE_USERID when appropriate
+    * Do not share 'o' for Oracle ('o') and ODBC (now 'd')
+    * Do not force DBI_PURE_PERL
+
 0.001 - 06 Aug 2013
 
     * Initial release
