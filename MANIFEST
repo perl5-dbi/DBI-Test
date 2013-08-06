@@ -15,6 +15,7 @@ lib/DBI/Test/Case/basic/prepare.pm
 lib/DBI/Test/Case/basic/type_info.pm
 lib/DBI/Test/Conf.pm
 lib/DBI/Test/DSN/Provider.pm
+lib/DBI/Test/DSN/Provider/Base.pm
 lib/DBI/Test/DSN/Provider/Config.pm
 lib/DBI/Test/DSN/Provider/Dir.pm
 lib/DBI/Test/DSN/Provider/File.pm
