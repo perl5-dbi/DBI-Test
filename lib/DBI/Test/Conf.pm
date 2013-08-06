@@ -110,6 +110,19 @@ sub alldrivers
     @drivers;
 }
 
+my %abbrev = (
+    CSV		=> "c",
+    ExampleP	=> "e",
+    File	=> "f",
+    mysql	=> "m",
+    NullP	=> "n",
+    ODBC	=> "d",
+    Oracle	=> "o",
+    Pg		=> "p",
+    SQLite	=> "s",
+    Unify	=> "u",
+);
+
 sub default_dsn_conf
 {
     my ( $self, $driver ) = @_;
@@ -117,7 +130,7 @@ sub default_dsn_conf
     $driver => {
                  category   => "driver",
                  cat_abbrev => "d",
-                 abbrev     => lc( substr( $driver, 0, 1 ) ),
+                 abbrev     => $abbrev{$driver} || lc( substr( $driver, 0, 1 ) ),
                  driver     => "dbi:$driver:",
                  name       => "DSN for $driver",
                };
