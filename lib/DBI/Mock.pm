@@ -5,7 +5,7 @@ use warnings;
 
 use Carp qw(carp confess);
 
-our $VERSION = "0.001";
+our $VERSION = "0.002";
 
 sub _set_isa
 {

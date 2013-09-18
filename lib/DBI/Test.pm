@@ -10,7 +10,7 @@ use Test::More import => [ '!pass' ];
 
 use parent qw(Test::Builder::Module Exporter);
 
-our $VERSION = "0.001";
+our $VERSION = "0.002";
 
 # XXX improve / beautify ... map {} + categories ...
 our @EXPORT = qw(connect_ok connect_not_ok prepare_ok execute_ok execute_not_ok do_ok do_not_ok);

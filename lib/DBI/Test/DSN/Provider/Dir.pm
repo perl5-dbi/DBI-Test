@@ -11,7 +11,7 @@ use File::Spec;
 
 use Carp qw(carp croak);
 
-our $VERSION = "0.001";
+our $VERSION = "0.002";
 
 my $test_dir;
 END { defined( $test_dir ) and rmtree $test_dir }

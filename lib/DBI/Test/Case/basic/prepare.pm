@@ -7,7 +7,7 @@ use parent qw(DBI::Test::Case);
 
 use Test::More;
 
-our $VERSION = "0.001";
+our $VERSION = "0.002";
 
 sub run_test
 {

@@ -8,7 +8,7 @@ use parent qw(DBI::Test::DSN::Provider::Base);
 require Cwd;
 require File::Spec;
 
-our $VERSION = "0.001";
+our $VERSION = "0.002";
 
 my $json;
 my $have_config_any;

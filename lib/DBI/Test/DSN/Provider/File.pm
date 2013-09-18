@@ -5,7 +5,7 @@ use warnings;
 
 use parent qw(DBI::Test::DSN::Provider::Base);
 
-our $VERSION = "0.001";
+our $VERSION = "0.002";
 
 1;
 
