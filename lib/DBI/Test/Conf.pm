@@ -262,13 +262,13 @@ END {
 EOC
 
     my @dsn = @$dsn_cred;
-    if (! defined $dsn[1] and defined $ENV{DBI_USER}) { # Use $DBI_USER / $DBI_PASS if user undef
-	$dsn[1] = $ENV{DBI_USER};
-	$dsn[2] = $ENV{DBI_PASS} if defined $ENV{DBI_PASS};
-    }
-    if (! defined $dsn[1] and $dsn[0] eq "dbi:Oracle:" && defined $ENV{ORACLE_USERID}) {
-	($dsn[1], $dsn[2]) = split m{/} => $ENV{ORACLE_USERID};
-    }
+#    if (! defined $dsn[1] and defined $ENV{DBI_USER}) { # Use $DBI_USER / $DBI_PASS if user undef
+#	$dsn[1] = $ENV{DBI_USER};
+#	$dsn[2] = $ENV{DBI_PASS} if defined $ENV{DBI_PASS};
+#    }
+#    if (! defined $dsn[1] and $dsn[0] eq "dbi:Oracle:" && defined $ENV{ORACLE_USERID}) {
+#	($dsn[1], $dsn[2]) = split m{/} => $ENV{ORACLE_USERID};
+#    }
     my $dsn =
       Data::Dumper->new( [\@dsn] )->Indent(0)->Sortkeys(1)->Quotekeys(0)->Terse(1)->Dump();
     # XXX how to deal with namespaces here and how do they affect generated test names?
