@@ -2,6 +2,8 @@ use strict;
 use warnings;
 use Test::More;
 
+our $VERSION = "0.001";
+
 our @DB_CREDS = ('dbi:SQLite::memory:', undef, undef, { AutoCommit => 0});
 my %SQLS = (
   'SELECT' => 'SELECT 1+1',

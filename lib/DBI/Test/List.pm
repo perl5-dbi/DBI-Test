@@ -3,6 +3,8 @@ package DBI::Test::List;
 use strict;
 use warnings;
 
+our $VERSION = "0.001";
+
 sub test_cases
 {
     return qw(basic::connect basic::disconnect);

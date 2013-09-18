@@ -5,6 +5,8 @@ use warnings;
 
 use Carp qw(carp confess);
 
+our $VERSION = "0.001";
+
 sub _set_isa
 {
     my ( $classes, $topclass ) = @_;

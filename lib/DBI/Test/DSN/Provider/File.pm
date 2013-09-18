@@ -5,6 +5,8 @@ use warnings;
 
 use parent qw(DBI::Test::DSN::Provider::Base);
 
+our $VERSION = "0.001";
+
 1;
 
 =head1 NAME

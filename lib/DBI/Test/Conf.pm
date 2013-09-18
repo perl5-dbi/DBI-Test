@@ -17,6 +17,8 @@ use DBI::Test::DSN::Provider ();
 
 use Module::Pluggable::Object ();
 
+our $VERSION = "0.001";
+
 my $cfg_plugins;
 
 sub cfg_plugins

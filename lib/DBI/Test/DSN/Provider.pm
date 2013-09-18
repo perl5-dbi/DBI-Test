@@ -5,6 +5,8 @@ use warnings;
 
 use Module::Pluggable::Object ();
 
+our $VERSION = "0.001";
+
 my $dsn_plugins;
 
 sub dsn_plugins

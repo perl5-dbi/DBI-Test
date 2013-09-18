@@ -8,6 +8,8 @@ use parent qw(DBI::Test::Case);
 use Test::More;
 use DBI::Test;
 
+our $VERSION = "0.001";
+
 sub run_test
 {
     my @DB_CREDS = @{$_[1]};

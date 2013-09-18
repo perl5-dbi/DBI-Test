@@ -5,6 +5,8 @@ use warnings;
 
 use DBI::Mock ();
 
+our $VERSION = "0.001";
+
 sub requires_extended { 0 }
 
 sub is_test_for_mocked

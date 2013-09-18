@@ -2,6 +2,8 @@ use strict;
 use warnings;
 use Test::More;
 
+our $VERSION = "0.001";
+
 our @DB_CREDS = ('dbi:SQLite::memory:', undef, undef, {});
 
 # NOTES: This test is a draft. Need to figure out several things.

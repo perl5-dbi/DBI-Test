@@ -3,6 +3,8 @@ package DBI::Test::DSN::Provider::Base;
 use strict;
 use warnings;
 
+our $VERSION = "0.001";
+
 sub relevance
 {
     my ($self, $test_case_ns, $default_creds) = @_;
