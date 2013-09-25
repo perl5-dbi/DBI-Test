@@ -1,10 +1,10 @@
-#!/usr/bin/perl
+#! perl
 
 use strict;
 use warnings;
 
 use Test::More;
+use Test::Pod::Coverage;
+use Pod::Coverage;
 
-eval "use Test::Pod::Coverage tests => 1";
-plan skip_all => "Test::Pod::Coverage required for testing POD Coverage" if $@;
-pod_coverage_ok ("DBI::Test", "DBI::Test is covered");
+all_pod_coverage_ok();
