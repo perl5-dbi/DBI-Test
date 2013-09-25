@@ -508,7 +508,6 @@ This module is a team-effort. The current team members are
   H.Merijn Brand   (Tux)
   Jens Rehsack     (Sno)
   Peter Rabbitson  (ribasushi)
-  Joakim TE<0x00f8>rmoen   (trmjoa)
 
 =head1 COPYRIGHT AND LICENSE
 

@@ -105,6 +105,9 @@ In Makefile.PL:
     use DBI::Test::Conf ();
     my @generated_tests = DBI::Test::Conf->setup();
     WriteMakefile (
+        configure_requires => {
+	    'DBI::Test' => '0.002',
+	},
         test => {
 	    TESTS           => join (' ' => 'xt/*.t', @generated_tests),
         },
@@ -219,25 +222,6 @@ The value got from $dbh-E<gt>do / $sth-E<gt>execute is returned.
 do_not_ok invokes $dbh->do and proves the result via I<is(undef)>.
 The value got from $dbh-E<gt>do / $sth-E<gt>execute is returned.
 
-=head1 GOAL
-
-=head2 TODO
-
-=head2 Source
-
-Recent changes can be (re)viewed in the public GIT repository at
-GitHub L<https://github.com/perl5-dbi/DBI-Test>
-Feel free to clone your own copy:
-
- $ git clone https://github.com/perl5-dbi/DBI-Test.git DBI-Test
-
-=head2 Contact
-
-We are discussing issues on the DBI development mailing list 1) and on IRC 2)
-
- 1) The DBI team <dbi-dev@perl.org>
- 2) irc.perl.org/6667 #dbi
-
 =head1 SUPPORT
 
 You can find documentation for this module with the perldoc command.
@@ -266,6 +250,13 @@ L<http://search.cpan.org/dist/DBI-Test/>
 
 =back
 
+=head2 Contact
+
+We are discussing issues on the DBI development mailing list 1) and on IRC 2)
+
+ 1) The DBI team <dbi-dev@perl.org>
+ 2) irc.perl.org/6667 #dbi
+
 =head2 Reporting bugs
 
 If you think you've found a bug then please read
@@ -283,14 +274,6 @@ DBI::Test comes with some basic tests to test itself and L<DBI::Mock>.
 The same tests are used for basic DBI self-tests as well as testing the
 SQL::Statement mock driver.
 
-=head1 EXAMPLES
-
-??? Synopsis ???
-
-=head1 DIAGNOSTICS
-
-???
-
 =head1 SEE ALSO
 
  DBI        - Database independent interface for Perl
@@ -304,7 +287,6 @@ This module is a team-effort. The current team members are
   H.Merijn Brand   (Tux)
   Jens Rehsack     (Sno)
   Peter Rabbitson  (ribasushi)
-  Joakim TE<0x00f8>rmoen   (trmjoa)
 
 =head1 COPYRIGHT AND LICENSE
 
