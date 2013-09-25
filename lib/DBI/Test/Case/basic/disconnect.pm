@@ -32,7 +32,8 @@ sub run_test
 	ok (!$dbh->{Active}, "dbh is inactive");
 	}
 
-SKIP: {	# Test that disconnect prints a warning if it disconncets on an active statementhandler
+    SKIP: {
+	# Test that disconnect prints a warning if it disconncets on an active statementhandler
 	# Q: Does it print an warning even though PrintWarn is false?
 	my $dbh = connect_ok (@DB_CREDS, "basic connect");
 	skip ("Invalid SQL for some engines", 1);
@@ -62,14 +63,14 @@ SKIP: {	# Test that disconnect prints a warning if it disconncets on an active s
 	    local $TODO = "Must make an API to make the disconnecct fail";
 	    my $dbh = connect_ok (@DB_CREDS, "basic connect");
 
-	    #Put code to make disconnect fail in here
+	    # Put code to make disconnect fail in here
 	    ok (!$dbh->disconnect (), "Disconnect failure");
-	    #Check that $DBI::err && $DBI::errstr is set
-	    #It should be set after a failed call
+	    # Check that $DBI::err && $DBI::errstr is set
+	    # It should be set after a failed call
 	    ok ($DBI::err,    '$DBI::err is set');
 	    ok ($DBI::errstr, '$DBI::errstr is set');
 
-	    #Disconnect failed. The Active flag should still be true
+	    # Disconnect failed. The Active flag should still be true
 	    ok ($dbh->{Active}, "dbh is still active");
 	    }
 	}
@@ -84,7 +85,7 @@ SKIP: {	# Test that disconnect prints a warning if it disconncets on an active s
 		"connect with PrintError");
 
 	    my @warnings = ();
-	    #Make sure we fetch the local
+	    # Make sure we fetch the local
 	    local $SIG{__WARN__} = sub {
 		my ($called_from, $warning) = @_;  # to find out Carping methods
 		my $warn_kind = $called_from eq "Carp" ? "carped" : "warn";
@@ -93,11 +94,11 @@ SKIP: {	# Test that disconnect prints a warning if it disconncets on an active s
 		push @warnings, $warning_stack[0];
 		};
 
-	    #TODO : force disconncet to fail
+	    # TODO : force disconncet to fail
 
-	    #Put code to make disconnect fail in here
+	    # Put code to make disconnect fail in here
 	    ok (!$dbh->disconnect (), "Disconnect failure");
-	    cmp_ok (scalar (@warnings), ">", 1, "Warning recorded");
+	    cmp_ok (scalar @warnings, ">", 1, "Warning recorded");
 	    }
 	}
 
@@ -110,9 +111,9 @@ SKIP: {	# Test that disconnect prints a warning if it disconncets on an active s
 	    my $dbh = DBI->connect (@DB_CREDS[0 .. 2], {RaiseError => 1});
 	    isa_ok ($dbh, "DBI::db");
 
-	    #TODO : force disconncet to fail
+	    # TODO : force disconncet to fail
 
-	    #Put code to make disconnect fail in here
+	    # Put code to make disconnect fail in here
 	    eval { $dbh->disconnect (); };
 	    ok ($@, "Disconnect raised error");
 	    }
