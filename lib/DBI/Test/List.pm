@@ -7,7 +7,7 @@ our $VERSION = "0.002";
 
 sub test_cases
 {
-    return qw(basic::connect basic::disconnect);
+    return qw(basic::connect basic::disconnect attributes::Error attributes::Warn);
 }
 
 =head1 NAME
