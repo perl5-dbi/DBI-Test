@@ -4,27 +4,41 @@ use Data::Dumper;
 use Storable qw(dclone);
 use Template::Tiny;
 
-{ package Setting::Env;
+{ package Setting::Base;
+use Class::Tiny { name => undef, value => undef };
+sub pre_code { return '' }
+sub post_code { return '' }
+}
 
-use Class::Tiny { type => 'env', name => undef, value => undef };
+{ package Setting::EnvVar; use parent -norequire, 'Setting::Base';
 
 sub pre_code {
     my $self = shift;
-    my $value = sprintf 'q{%s}', $self->{value}; # TODO needs proper perl quoting
-    return sprintf '$ENV{%s} = %s;%s', $self->{name}, $value, "\n";
+    my $perl_value = ::quote_value_as_perl($self->{value});
+    return sprintf '$ENV{%s} = %s;%s', $self->{name}, $perl_value, "\n";
 }
 sub post_code {
     my $self = shift;
     return sprintf 'delete $ENV{%s};%s', $self->{name}, "\n"; # for VMS
 }
 
-} # Setting::Env
+} # Setting::EnvVar
+
+{ package Setting::OurVar; use parent -norequire, 'Setting::Base';
+
+sub pre_code {
+    my $self = shift;
+    my $perl_value = ::quote_value_as_perl($self->{value});
+    return sprintf 'our $%s = %s;%s', $self->name, $perl_value, "\n";
+}
+
+} # Setting::OurVar
 
 
 # tumbler(
 #   $providers,  - array of code refs returning key-value pairs of variants
-#   $leaf,       - data passed to $providers (which may edit it) and $consumer
-#   $consumer,   - code ref called for each variant at each level
+#   $leaf,       - opaque data passed to $providers (which may edit it) and to $consumer
+#   $consumer,   - code ref called for each path of variants
 #   $path,       - array of current variant names, one for each level of provider
 #   $context     - array of current variant values, one for each level of provider
 # )
@@ -39,15 +53,23 @@ sub tumbler {                              # this code is generic
         return $leaf;
     }
 
-    $leaf = dclone($leaf); # so provider can alter it
+    # clone the $leaf so provider can alter it for the consumer
+    # at and below this point in the tree of variants
+    $leaf = dclone($leaf);
 
     my %variants = (shift @providers)->($context, $leaf);
 
-    if (not %variants) { # no variants at this level
+    if (not %variants) {
+
+        # no variants at this level so continue to next level of provider
 
         return tumbler(\@providers, $leaf, $consumer, $path, $context);
     }
     else {
+
+        # for each variant in turn, call the next level of provider
+        # with the name and value of the variant appended to the
+        # path and context.
 
         my %tree;
         for my $name (sort keys %variants) {
@@ -69,8 +91,12 @@ my $tree = tumbler(
     [   # providers
         \&dbi_settings_provider,
         \&driver_settings_provider,
+        \&dbd_settings_provider,
     ],
-    {   # 'templates'
+    {   # 'templates' (a cloned copy is passed to the producers and consumer)
+        # This is clearly just a hack for demo purposes.
+        # Something like Template::Tiny or Text::Template could be adopted
+        # or our own lightweight object that could act as an adaptor.
         "foo.t" => "PRE\nfoo\nPOST\n",
         "bar.t" => "PRE\nbar\nPOST\n",
     },
@@ -99,21 +125,6 @@ exit 0;
 
 # ------
 
-sub new_env_setting {
-    my ($name, $value) = @_;
-    return Setting::Env->new(name => $name, value => $value);
-}
-sub driver_is_pureperl { # XXX
-    my ($driver) = @_;
-    return 0 if $driver eq 'SQLite';
-    return 1;
-}
-sub driver_is_proxy { # XXX
-    my ($driver) = @_;
-    return 1 if $driver eq 'Gofer' || $driver eq 'Proxy';
-    return 0;
-}
-
 
 sub dbi_settings_provider {
 
@@ -138,6 +149,8 @@ sub dbi_settings_provider {
 sub driver_settings_provider {
     my ($settings_context, $tests) = @_;
 
+    # return a setting for each driver that can be tested in the current context
+
     require DBI;
     my @drivers = DBI->available_drivers; # Test::Database->list_drivers("available");
 
@@ -150,9 +163,95 @@ sub driver_settings_provider {
     # filter out non-pureperl drivers if testing with DBI_PUREPERL
     @drivers = grep { driver_is_pureperl($_) } @drivers
         # if $settings_context->get_env('DBI_PUREPERL'); # would be better
-        if grep { $_ && $_->name eq 'DBI_PUREPERL' && $_->value } @$settings_context;
+        if get_env($settings_context, 'DBI_PUREPERL');
 
+    # convert list of drivers into list of DBI_DRIVER env var settings
     return map { $_ => new_env_setting(DBI_DRIVER => $_) } @drivers;
 }
 
 
+sub dbd_settings_provider {
+    my ($settings_context, $tests) = @_;
+
+    # return variant settings to be tested for the current DBI_DRIVER
+
+    my $driver = get_env($settings_context, 'DBI_DRIVER');
+    my %settings;
+
+    # this would dispatch to plug-ins based on the value of
+
+    if ($driver eq 'DBM') {
+
+        my @mldbm_types = ("");
+        if ( eval { require 'MLDBM.pm' } ) {
+            push @mldbm_types, qw(Data::Dumper Storable); # in CORE
+            push @mldbm_types, 'FreezeThaw' if eval { require 'FreezeThaw.pm' };
+            push @mldbm_types, 'YAML' if eval { require MLDBM::Serializer::YAML; };
+            push @mldbm_types, 'JSON' if eval { require MLDBM::Serializer::JSON; };
+        }
+
+        my @dbm_types = grep { eval { local $^W; require "$_.pm" } }
+            qw(SDBM_File GDBM_File DB_File BerkeleyDB NDBM_File ODBM_File);
+
+        for my $mldbm_type (@mldbm_types) {
+            for my $dbm_type (@dbm_types) {
+
+                my $tag = join("-", grep { $_ } $mldbm_type, $dbm_type);
+                $tag =~ s/:+/_/g;
+                $settings{$tag} = new_our_setting(DBD_DBM_SETTINGS => {
+                    mldbm_type => $mldbm_type,
+                    dbm_types  => $dbm_type,
+                });
+
+            }
+        }
+
+        # example of adding a test, in a subdir, for a single driver
+        $tests->{"deeper/path/example.t"} = "PRE\nexample extra test in subdir\nPOST\n";
+    }
+
+    return %settings;
+}
+
+
+# --- supporting functions/hacks/stubs
+
+sub new_env_setting {
+    my ($name, $value) = @_;
+    return Setting::EnvVar->new(name => $name, value => $value);
+}
+
+sub new_our_setting {
+    my ($name, $value) = @_;
+    return Setting::OurVar->new(name => $name, value => $value);
+}
+
+sub get_env {
+    my ($settings, $name) = @_;
+    for my $setting (reverse @$settings) {
+        next unless $setting;
+        next unless $setting->isa('Setting::EnvVar');
+        next unless $setting->{name} eq $name;
+        return $setting->{value};
+    }
+    return undef;
+}
+
+sub driver_is_pureperl { # XXX
+    my ($driver) = @_;
+    return 0 if $driver eq 'SQLite';
+    return 1;
+}
+
+sub driver_is_proxy { # XXX
+    my ($driver) = @_;
+    return 1 if $driver eq 'Gofer' || $driver eq 'Proxy';
+    return 0;
+}
+
+sub quote_value_as_perl {
+    my ($value) = @_;
+    my $perl_value = Data::Dumper->new([$value])->Terse(1)->Purity(1)->Useqq(1)->Sortkeys(1)->Dump;
+    chomp $perl_value;
+    return $perl_value;
+}
