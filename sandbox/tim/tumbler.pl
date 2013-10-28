@@ -5,10 +5,24 @@ use Storable qw(dclone);
 use Template::Tiny;
 
 { package Setting::Base;
-use Class::Tiny { name => undef, value => undef };
-sub pre_code { return '' }
-sub post_code { return '' }
+sub new {
+    my ($class, $name, $value) = @_;
+    return bless { name => $name, value => $value }, $class;
 }
+sub pre_code {
+    return ''
+}
+sub post_code {
+    return ''
+}
+sub get_var {
+    my ($self, $name, $type) = @_;
+    return if $type && !$self->isa($type);  # empty list
+    return if $name ne $self->{name};       # empty list
+    return $self->{value};                  # scalar
+}
+
+} # Setting::Base
 
 { package Setting::EnvVar; use parent -norequire, 'Setting::Base';
 
@@ -29,10 +43,32 @@ sub post_code {
 sub pre_code {
     my $self = shift;
     my $perl_value = ::quote_value_as_perl($self->{value});
-    return sprintf 'our $%s = %s;%s', $self->name, $perl_value, "\n";
+    return sprintf 'our $%s = %s;%s', $self->{name}, $perl_value, "\n";
 }
 
 } # Setting::OurVar
+
+{ package Context; # a list of settings
+
+sub new { my $class = shift; return bless [ @_ ], $class }
+
+sub pre_code  { my $self = shift; return join "", map { $_->pre_code  } reverse @$self }
+sub post_code { my $self = shift; return join "", map { $_->post_code } reverse @$self }
+
+sub get_var { # search backwards through list of settings
+    my ($self, $name, $type) = @_;
+    for my $setting (reverse @$self) {
+        next unless $setting;
+        my @value = $setting->get_var($name, $type);
+        return $value[0] if @value;
+    }
+    return;
+}
+
+sub get_env_var { my ($self, $name) = @_; return $self->get_var($name, 'Setting::EnvVar') }
+sub get_our_var { my ($self, $name) = @_; return $self->get_var($name, 'Setting::OurVar') }
+
+} # Context
 
 
 # tumbler(
@@ -77,7 +113,7 @@ sub tumbler {                              # this code is generic
             $tree{$name} = tumbler(
                 \@providers, $leaf, $consumer,
                 [ @$path, $name ],
-                [ @$context, $variants{$name} ],
+                Context->new($context, $variants{$name}),
             );
         }
         return \%tree;
@@ -104,8 +140,8 @@ my $tree = tumbler(
         my ($path, $context, $leaf) = @_;
         my $dirpath = join "/", @$path;
 
-        my $pre  = join "", map { $_ ? $_->pre_code  : () } @$context;
-        my $post = join "", map { $_ ? $_->post_code : () } reverse @$context;
+        my $pre  = $context->pre_code;
+        my $post = $context->post_code;
 
         for my $testname (keys %$leaf) {
             my $body = $leaf->{$testname};
@@ -115,7 +151,7 @@ my $tree = tumbler(
         }
     },
     [ ], # path
-    [ ], # context
+    Context->new(), # context
 );
 #warn Dumper $tree;
 
@@ -129,25 +165,25 @@ exit 0;
 sub dbi_settings_provider {
 
     my %settings = (
-        pureperl => new_env_setting(DBI_PUREPERL => 2),
-        gofer    => new_env_setting(DBI_AUTOPROXY => 'dbi:Gofer:transport=null;policy=pedantic'),
+        pureperl => Setting::EnvVar->new(DBI_PUREPERL => 2),
+        gofer    => Setting::EnvVar->new(DBI_AUTOPROXY => 'dbi:Gofer:transport=null;policy=pedantic'),
     );
 
     # Add combinations:
     # Returns the original settings plus extras created by combining.
     # In this case returns one extra key-value pair, i.e.:
-    # $settings{pureperl_gofer} = new_multi_setting( $settings{pureperl}, $settings{gofer} );
+    # $settings{pureperl_gofer} = Context->new( $settings{pureperl}, $settings{gofer} );
 #   %settings = add_combinations(%settings);
 
     # add a 'null setting' that tests plain DBI with default environment
-    $settings{plain} = undef;
+    $settings{plain} = Setting::Base->new;
 
     return %settings;
 }
 
 
 sub driver_settings_provider {
-    my ($settings_context, $tests) = @_;
+    my ($context, $tests) = @_;
 
     # return a setting for each driver that can be tested in the current context
 
@@ -155,27 +191,26 @@ sub driver_settings_provider {
     my @drivers = DBI->available_drivers; # Test::Database->list_drivers("available");
 
     # these filters could be implemented as per-driver test plugins
-    # that respond to the $settings_context
+    # that respond to the $context
 
     # filter out proxy drivers
     @drivers = grep { !driver_is_proxy($_) } @drivers;
 
     # filter out non-pureperl drivers if testing with DBI_PUREPERL
     @drivers = grep { driver_is_pureperl($_) } @drivers
-        # if $settings_context->get_env('DBI_PUREPERL'); # would be better
-        if get_env($settings_context, 'DBI_PUREPERL');
+        if $context->get_env_var('DBI_PUREPERL');
 
     # convert list of drivers into list of DBI_DRIVER env var settings
-    return map { $_ => new_env_setting(DBI_DRIVER => $_) } @drivers;
+    return map { $_ => Setting::EnvVar->new(DBI_DRIVER => $_) } @drivers;
 }
 
 
 sub dbd_settings_provider {
-    my ($settings_context, $tests) = @_;
+    my ($context, $tests) = @_;
 
     # return variant settings to be tested for the current DBI_DRIVER
 
-    my $driver = get_env($settings_context, 'DBI_DRIVER');
+    my $driver = $context->get_env_var('DBI_DRIVER');
     my %settings;
 
     # this would dispatch to plug-ins based on the value of
@@ -198,7 +233,7 @@ sub dbd_settings_provider {
 
                 my $tag = join("-", grep { $_ } $mldbm_type, $dbm_type);
                 $tag =~ s/:+/_/g;
-                $settings{$tag} = new_our_setting(DBD_DBM_SETTINGS => {
+                $settings{$tag} = Setting::OurVar->new(DBD_DBM_SETTINGS => {
                     mldbm_type => $mldbm_type,
                     dbm_types  => $dbm_type,
                 });
@@ -216,26 +251,6 @@ sub dbd_settings_provider {
 
 # --- supporting functions/hacks/stubs
 
-sub new_env_setting {
-    my ($name, $value) = @_;
-    return Setting::EnvVar->new(name => $name, value => $value);
-}
-
-sub new_our_setting {
-    my ($name, $value) = @_;
-    return Setting::OurVar->new(name => $name, value => $value);
-}
-
-sub get_env {
-    my ($settings, $name) = @_;
-    for my $setting (reverse @$settings) {
-        next unless $setting;
-        next unless $setting->isa('Setting::EnvVar');
-        next unless $setting->{name} eq $name;
-        return $setting->{value};
-    }
-    return undef;
-}
 
 sub driver_is_pureperl { # XXX
     my ($driver) = @_;
