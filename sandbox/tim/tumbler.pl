@@ -1,129 +1,14 @@
+#!/bin/env perl
 
 use strict;
-use Data::Dumper;
-use Storable qw(dclone);
-use Template::Tiny;
 
-{ package Setting::Base;
-sub new {
-    my ($class, $name, $value) = @_;
-    return bless { name => $name, value => $value }, $class;
-}
-sub pre_code {
-    return ''
-}
-sub post_code {
-    return ''
-}
-sub get_var {
-    my ($self, $name, $type) = @_;
-    return if $type && !$self->isa($type);  # empty list
-    return if $name ne $self->{name};       # empty list
-    return $self->{value};                  # scalar
-}
+use lib 'lib';
 
-} # Setting::Base
-
-{ package Setting::EnvVar; use parent -norequire, 'Setting::Base';
-
-sub pre_code {
-    my $self = shift;
-    my $perl_value = ::quote_value_as_perl($self->{value});
-    return sprintf '$ENV{%s} = %s;%s', $self->{name}, $perl_value, "\n";
-}
-sub post_code {
-    my $self = shift;
-    return sprintf 'delete $ENV{%s};%s', $self->{name}, "\n"; # for VMS
-}
-
-} # Setting::EnvVar
-
-{ package Setting::OurVar; use parent -norequire, 'Setting::Base';
-
-sub pre_code {
-    my $self = shift;
-    my $perl_value = ::quote_value_as_perl($self->{value});
-    return sprintf 'our $%s = %s;%s', $self->{name}, $perl_value, "\n";
-}
-
-} # Setting::OurVar
-
-{ package Context; # a list of settings
-
-sub new { my $class = shift; return bless [ @_ ], $class }
-
-sub pre_code  { my $self = shift; return join "", map { $_->pre_code  } reverse @$self }
-sub post_code { my $self = shift; return join "", map { $_->post_code } reverse @$self }
-
-sub get_var { # search backwards through list of settings
-    my ($self, $name, $type) = @_;
-    for my $setting (reverse @$self) {
-        next unless $setting;
-        my @value = $setting->get_var($name, $type);
-        return $value[0] if @value;
-    }
-    return;
-}
-
-sub get_env_var { my ($self, $name) = @_; return $self->get_var($name, 'Setting::EnvVar') }
-sub get_our_var { my ($self, $name) = @_; return $self->get_var($name, 'Setting::OurVar') }
-
-} # Context
+use Context;
+use Tumbler;
 
 
-# tumbler(
-#   $providers,  - array of code refs returning key-value pairs of variants
-#   $leaf,       - opaque data passed to $providers (which may edit it) and to $consumer
-#   $consumer,   - code ref called for each path of variants
-#   $path,       - array of current variant names, one for each level of provider
-#   $context     - array of current variant values, one for each level of provider
-# )
-
-sub tumbler {                              # this code is generic
-    my ($providers, $leaf, $consumer, $path, $context) = @_;
-
-    my @providers = @$providers;
-
-    if (not @providers) { # no more providers in this context
-        $consumer->($path, $context, $leaf);
-        return $leaf;
-    }
-
-    # clone the $leaf so provider can alter it for the consumer
-    # at and below this point in the tree of variants
-    $leaf = dclone($leaf);
-
-    my %variants = (shift @providers)->($context, $leaf);
-
-    if (not %variants) {
-
-        # no variants at this level so continue to next level of provider
-
-        return tumbler(\@providers, $leaf, $consumer, $path, $context);
-    }
-    else {
-
-        # for each variant in turn, call the next level of provider
-        # with the name and value of the variant appended to the
-        # path and context.
-
-        my %tree;
-        for my $name (sort keys %variants) {
-
-            $tree{$name} = tumbler(
-                \@providers, $leaf, $consumer,
-                [ @$path, $name ],
-                Context->new($context, $variants{$name}),
-            );
-        }
-        return \%tree;
-    }
-}
-
-
-# ------
-
-my $tree = tumbler(
+tumbler(
     [   # providers
         \&dbi_settings_provider,
         \&driver_settings_provider,
@@ -165,8 +50,8 @@ exit 0;
 sub dbi_settings_provider {
 
     my %settings = (
-        pureperl => Setting::EnvVar->new(DBI_PUREPERL => 2),
-        gofer    => Setting::EnvVar->new(DBI_AUTOPROXY => 'dbi:Gofer:transport=null;policy=pedantic'),
+        pureperl => Context->new_env_var(DBI_PUREPERL => 2),
+        gofer    => Context->new_env_var(DBI_AUTOPROXY => 'dbi:Gofer:transport=null;policy=pedantic'),
     );
 
     # Add combinations:
@@ -176,7 +61,7 @@ sub dbi_settings_provider {
 #   %settings = add_combinations(%settings);
 
     # add a 'null setting' that tests plain DBI with default environment
-    $settings{plain} = Setting::Base->new;
+    $settings{plain} = Context->new;
 
     return %settings;
 }
@@ -201,7 +86,7 @@ sub driver_settings_provider {
         if $context->get_env_var('DBI_PUREPERL');
 
     # convert list of drivers into list of DBI_DRIVER env var settings
-    return map { $_ => Setting::EnvVar->new(DBI_DRIVER => $_) } @drivers;
+    return map { $_ => Context->new_env_var(DBI_DRIVER => $_) } @drivers;
 }
 
 
@@ -233,7 +118,7 @@ sub dbd_settings_provider {
 
                 my $tag = join("-", grep { $_ } $mldbm_type, $dbm_type);
                 $tag =~ s/:+/_/g;
-                $settings{$tag} = Setting::OurVar->new(DBD_DBM_SETTINGS => {
+                $settings{$tag} = Context->new_our_var(DBD_DBM_SETTINGS => {
                     mldbm_type => $mldbm_type,
                     dbm_types  => $dbm_type,
                 });
