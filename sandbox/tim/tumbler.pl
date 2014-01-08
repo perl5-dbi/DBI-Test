@@ -1,5 +1,24 @@
 #!/bin/env perl
 
+=head1 prototype playground for exploring DBI Test design issues
+
+This script generates variants of test scripts.
+
+    Env vars that affect the DBI (DBI_PUREPERL, DBI_AUTOPROXY etc)
+    |
+    `- The available DBDs (eg Test::Database->list_drivers("available"))
+       Current DBD is selected using the DBI_DRIVER env var
+       |
+       `- Env vars that affect the DBD (via DBD specific config)
+          |
+          `- Connection attributes (via DBD specific config)
+             Set via DBI_DSN env var eg "dbi::foo=bar"
+
+The range of variants for each is affected by the current values of the
+items above. E.g., some drivers can't be used if DBI_PUREPERL is true.
+
+=cut
+
 use strict;
 use autodie;
 use File::Find;
@@ -66,7 +85,6 @@ sub write_test_file {
         my $testinfo = $leaf->{$testname};
 
         mkfilepath("$dirpath/$testname");
-
 
         warn "Write $dirpath/$testname\n";
         open my $fh, ">", "$dirpath/$testname";
@@ -157,15 +175,17 @@ sub dbd_settings_provider {
 
                 my $tag = join("-", grep { $_ } $mldbm_type, $dbm_type);
                 $tag =~ s/:+/_/g;
-                $settings{$tag} = Context->new_our_var(DBD_DBM_SETTINGS => {
-                    mldbm_type => $mldbm_type,
-                    dbm_types  => $dbm_type,
-                });
 
+                # to pass the mldbm_type and dbm_type we use the DBI_DSN env var
+                # because the DBD portion is empty the DBI still uses DBI_DRIVER env var
+                my $DBI_DSN = "dbi::mldbm_type=$mldbm_type,dbm_type=$dbm_type";
+                $settings{$tag} = Context->new_env_var(DBI_DSN => $DBI_DSN);
             }
         }
 
-        # example of adding a test, in a subdir, for a single driver
+        # Example of adding a test, in a subdir, for a single driver.
+        # Because $tests is cloned in the tumbler this extra item doesn't
+        # affect other contexts
         $tests->{"deeper/path/example.t"} = { code => "use Test::More; pass(); done_testing;" };
     }
 
@@ -198,5 +218,5 @@ sub quote_value_as_perl {
 sub mkfilepath {
     my ($name) = @_;
     my $dirpath = dirname($name);
-    mkpath($dirpath, 1) unless -d $dirpath;
+    mkpath($dirpath, 0) unless -d $dirpath;
 }

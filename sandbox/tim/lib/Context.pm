@@ -68,7 +68,7 @@ sub new_our_var { shift; Context::OurVar->new(@_) }
 
     sub post_code {
         my $self = shift;
-        return sprintf 'delete $ENV{%s};%s', $self->{name}, "\n"; # for VMS
+        return sprintf 'END { delete $ENV{%s} }%s', $self->{name}, "\n"; # for VMS
     }
 
 } # Context::EnvVar
