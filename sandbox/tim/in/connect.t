@@ -1,7 +1,10 @@
 
 use strict;
 use Test::More;
+use DBI;
 
-pass();
+my $dbh = DBI->connect();
+ok $dbh;
 
 done_testing;
+
