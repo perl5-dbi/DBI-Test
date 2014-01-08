@@ -49,8 +49,8 @@ sub tumbler {                              # this code is generic
 
             tumbler(
                 \@providers, $leaf, $consumer,
-                [ @$path, $name ],
-                Context->new($context, $variants{$name}),
+                [ @$path,   $name            ],
+                $context->new($context, $variants{$name}),
             );
         }
     }

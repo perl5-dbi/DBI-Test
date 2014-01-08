@@ -7,7 +7,7 @@ use strict;
 #
 # Values can be looked up by name. The first match will be returned.
 
-sub new { my $class = shift; return bless [ @_ ], $class }
+sub new { my $class = shift; $class = ref $class if ref $class; return bless [ @_ ], $class }
 
 sub pre_code  { my $self = shift; return join "", map { $_->pre_code  } reverse @$self }
 sub post_code { my $self = shift; return join "", map { $_->post_code } reverse @$self }

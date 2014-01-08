@@ -1,44 +1,83 @@
 #!/bin/env perl
 
 use strict;
+use autodie;
+use File::Find;
+use File::Path;
+use File::Basename;
+use Data::Dumper;
 
 use lib 'lib';
 
 use Context;
 use Tumbler;
 
+my $input_dir  = "in";
+my $output_dir = "out";
+
+my $templates = get_templates($input_dir);
 
 tumbler(
-    [   # providers
+    # providers
+    [ 
         \&dbi_settings_provider,
         \&driver_settings_provider,
         \&dbd_settings_provider,
     ],
-    {   # 'templates' (a cloned copy is passed to the producers and consumer)
-        # This is clearly just a hack for demo purposes.
-        # Something like Template::Tiny or Text::Template could be adopted
-        # or our own lightweight object that could act as an adaptor.
-        "foo.t" => "PRE\nfoo\nPOST\n",
-        "bar.t" => "PRE\nbar\nPOST\n",
-    },
-    sub { # consumer
-        my ($path, $context, $leaf) = @_;
-        my $dirpath = join "/", @$path;
 
-        my $pre  = $context->pre_code;
-        my $post = $context->post_code;
+    # templates
+    $templates,
 
-        for my $testname (keys %$leaf) {
-            my $body = $leaf->{$testname};
-            $body =~ s/PRE\n/$pre/;
-            $body =~ s/POST\n/$post/;
-            warn "\nWrite $dirpath/$testname:\n$body\n";
-        }
-    },
-    [ ], # path
-    Context->new(), # context
+    # consumer
+    \&write_test_file,
+
+    # path
+    [],
+    # context
+    Context->new,
 );
-#warn Dumper $tree;
+
+
+sub get_templates {
+    my ($template_dir) = @_;
+    my %templates;
+
+    find(sub {
+        next unless m/\.t$/;
+        my $name = $File::Find::name;
+        $name =~ s!\Q$template_dir\E/!!;
+        $templates{ $name } = { require => $File::Find::name };
+    }, $template_dir);
+
+    return \%templates;
+}
+
+
+
+sub write_test_file {
+    my ($path, $context, $leaf) = @_;
+
+    my $dirpath = join "/", $output_dir, @$path;
+
+    my $pre  = $context->pre_code;
+    my $post = $context->post_code;
+
+    for my $testname (sort keys %$leaf) {
+        my $testinfo = $leaf->{$testname};
+
+        mkfilepath("$dirpath/$testname");
+
+
+        warn "Write $dirpath/$testname\n";
+        open my $fh, ">", "$dirpath/$testname";
+        print $fh "#!perl\n";
+        print $fh $pre;
+        print $fh "require '$testinfo->{require}';\n" if $testinfo->{require};
+        print $fh "$testinfo->{code}\n" if $testinfo->{code};
+        print $fh $post;
+        close $fh;
+    }
+}
 
 
 exit 0;
@@ -127,7 +166,7 @@ sub dbd_settings_provider {
         }
 
         # example of adding a test, in a subdir, for a single driver
-        $tests->{"deeper/path/example.t"} = "PRE\nexample extra test in subdir\nPOST\n";
+        $tests->{"deeper/path/example.t"} = { code => "use Test::More; pass(); done_testing;" };
     }
 
     return %settings;
@@ -154,4 +193,10 @@ sub quote_value_as_perl {
     my $perl_value = Data::Dumper->new([$value])->Terse(1)->Purity(1)->Useqq(1)->Sortkeys(1)->Dump;
     chomp $perl_value;
     return $perl_value;
+}
+
+sub mkfilepath {
+    my ($name) = @_;
+    my $dirpath = dirname($name);
+    mkpath($dirpath, 1) unless -d $dirpath;
 }
