@@ -36,6 +36,9 @@ my $output_dir = "out";
 
 my $templates = get_templates($input_dir);
 
+rename $output_dir, $output_dir.'-'.time
+    if -d $output_dir;
+
 tumbler(
     # providers
     [ 
@@ -118,7 +121,7 @@ sub dbi_settings_provider {
 #   %settings = add_combinations(%settings);
 
     # add a 'null setting' that tests plain DBI with default environment
-    $settings{plain} = Context->new;
+    $settings{normal} = Context->new;
 
     return %settings;
 }
@@ -155,7 +158,6 @@ sub dbd_settings_provider {
     # return variant settings to be tested for the current DBI_DRIVER
 
     my $driver = $context->get_env_var('DBI_DRIVER');
-    my %settings;
 
     require Test::Database;
     my @tdb_handles = Test::Database->handles({ dbd => $driver });
@@ -163,43 +165,34 @@ sub dbd_settings_provider {
         warn "skipped $driver - no Test::Database config\n";
         return;
     }
+    #warn Dumper \@tdb_handles;
 
-    warn "Warning: $driver has multiple Test::Database config - only first used currently"
-        if @tdb_handles > 1;
+    my $seqn = 0;
+    my %settings;
 
-    # this would dispatch to plug-ins based on the value of
+    for my $tdb_handle (@tdb_handles) {
 
-    if ($driver eq 'DBM') {
+        my $driver_variants;
 
-        my @mldbm_types = ("");
-        if ( eval { require 'MLDBM.pm' } ) {
-            push @mldbm_types, qw(Data::Dumper Storable); # in CORE
-            push @mldbm_types, 'FreezeThaw' if eval { require 'FreezeThaw.pm' };
-            push @mldbm_types, 'YAML' if eval { require MLDBM::Serializer::YAML; };
-            push @mldbm_types, 'JSON' if eval { require MLDBM::Serializer::JSON; };
+        # XXX this would dispatch to plug-ins based on the value of $driver
+        if ($driver eq 'DBM') {
+            $driver_variants = dbd_dbm_settings_provider($context, $tests);
         }
 
-        my @dbm_types = grep { eval { local $^W; require "$_.pm" } }
-            qw(SDBM_File GDBM_File DB_File BerkeleyDB NDBM_File ODBM_File);
-
-        for my $mldbm_type (@mldbm_types) {
-            for my $dbm_type (@dbm_types) {
-
-                my $tag = join("-", grep { $_ } $mldbm_type, $dbm_type);
-                $tag =~ s/:+/_/g;
-
-                # to pass the mldbm_type and dbm_type we use the DBI_DSN env var
-                # because the DBD portion is empty the DBI still uses DBI_DRIVER env var
-                my $DBI_DSN = "dbi::mldbm_type=$mldbm_type,dbm_type=$dbm_type";
-                $settings{$tag} = Context->new_env_var(DBI_DSN => $DBI_DSN);
-            }
+        # if we have any variant test cases then add them to the settings for this context
+        if ($driver_variants) {
+            # XXX would be nice to be able to use $handle->key
+            warn my $prefix = (@tdb_handles > 1) ? ++$seqn : undef;
+            add_settings(\%settings, $driver_variants, $prefix);
         }
-
-        # Example of adding a test, in a subdir, for a single driver.
-        # Because $tests is cloned in the tumbler this extra item doesn't
-        # affect other contexts
-        $tests->{"deeper/path/example.t"} = { code => "use Test::More; pass(); done_testing;" };
     }
+
+    # if the driver has no variants then we supply a dummy one
+    # (else this context would be skipped)
+    $settings{normal} = Context->new
+        unless %settings;
+
+    #warn Dumper { driver => $driver, settings => \%settings };
 
     return %settings;
 }
@@ -234,4 +227,52 @@ sub mkfilepath {
     my ($name) = @_;
     my $dirpath = dirname($name);
     mkpath($dirpath, 0) unless -d $dirpath;
+}
+
+sub add_settings {
+    my ($dst, $src, $prefix) = @_;
+    for my $src_key (keys %$src) {
+        my $dst_key = ($prefix) ? "$prefix-$src_key" : $src_key;
+        croak "Test variant setting key '$dst_key' already exists"
+            if exists $dst->{$dst_key};
+        $dst->{$dst_key} = $src->{$src_key};
+    }
+    return;
+}
+
+
+sub dbd_dbm_settings_provider {
+    my ($context, $tests) = @_;
+
+    my @mldbm_types = ("");
+    if ( eval { require 'MLDBM.pm' } ) {
+        push @mldbm_types, qw(Data::Dumper Storable); # in CORE
+        push @mldbm_types, 'FreezeThaw' if eval { require 'FreezeThaw.pm' };
+        push @mldbm_types, 'YAML' if eval { require MLDBM::Serializer::YAML; };
+        push @mldbm_types, 'JSON' if eval { require MLDBM::Serializer::JSON; };
+    }
+
+    my @dbm_types = grep { eval { local $^W; require "$_.pm" } }
+        qw(SDBM_File GDBM_File DB_File BerkeleyDB NDBM_File ODBM_File);
+
+    my %settings;
+    for my $mldbm_type (@mldbm_types) {
+        for my $dbm_type (@dbm_types) {
+
+            my $tag = join("-", grep { $_ } $mldbm_type, $dbm_type);
+            $tag =~ s/:+/_/g;
+
+            # to pass the mldbm_type and dbm_type we use the DBI_DSN env var
+            # because the DBD portion is empty the DBI still uses DBI_DRIVER env var
+            my $DBI_DSN = "dbi::mldbm_type=$mldbm_type,dbm_type=$dbm_type";
+            $settings{$tag} = Context->new_env_var(DBI_DSN => $DBI_DSN);
+        }
+    }
+
+    # Example of adding a test, in a subdir, for a single driver.
+    # Because $tests is cloned in the tumbler this extra item doesn't
+    # affect other contexts, but does affect all variants in this context.
+    $tests->{"deeper/path/example.t"} = { code => "use Test::More; pass(); done_testing;" };
+
+    return \%settings;
 }
