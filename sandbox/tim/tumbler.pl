@@ -31,6 +31,7 @@ use lib 'lib';
 use Context;
 use Tumbler;
 
+$| = 1;
 my $input_dir  = "in";
 my $output_dir = "out";
 
@@ -115,13 +116,13 @@ sub dbi_settings_provider {
     );
 
     # Add combinations:
-    # Returns the original settings plus extras created by combining.
-    # In this case returns one extra key-value pair, i.e.:
-    # $settings{pureperl_gofer} = Context->new( $settings{pureperl}, $settings{gofer} );
-#   %settings = add_combinations(%settings);
+    #add_settings(\%settings, get_combinations(%settings));
+    # In this case returns one extra key-value pair for pureperl+gofer
+    # so we'll do that manually for now:
+    $settings{pureperl_gofer} = Context->new( $settings{pureperl}, $settings{gofer} );
 
     # add a 'null setting' that tests plain DBI with default environment
-    $settings{normal} = Context->new;
+    $settings{Default} = Context->new;
 
     return %settings;
 }
@@ -162,7 +163,7 @@ sub dbd_settings_provider {
     require Test::Database;
     my @tdb_handles = Test::Database->handles({ dbd => $driver });
     unless (@tdb_handles) {
-        warn "skipped $driver - no Test::Database config\n";
+        warn "Skipped $driver driver - no Test::Database dsn config using the $driver driver\n";
         return;
     }
     #warn Dumper \@tdb_handles;
@@ -175,22 +176,28 @@ sub dbd_settings_provider {
         my $driver_variants;
 
         # XXX this would dispatch to plug-ins based on the value of $driver
+        # for now we just call a hard-coded sub
         if ($driver eq 'DBM') {
             $driver_variants = dbd_dbm_settings_provider($context, $tests);
         }
-
-        # if we have any variant test cases then add them to the settings for this context
-        if ($driver_variants) {
-            # XXX would be nice to be able to use $handle->key
-            warn my $prefix = (@tdb_handles > 1) ? ++$seqn : undef;
-            add_settings(\%settings, $driver_variants, $prefix);
+        else {
+            # if the driver has no variants then we supply a dummy one
+            # (else this context would be skipped)
+            $driver_variants = { Default => Context->new };
         }
-    }
 
-    # if the driver has no variants then we supply a dummy one
-    # (else this context would be skipped)
-    $settings{normal} = Context->new
-        unless %settings;
+        # add DBI_USER and DBI_PASS into each variant, if defined
+        for my $variant (values %$driver_variants) {
+            $variant->push_var(Context->new_env_var(DBI_USER => $tdb_handle->username))
+                if defined $tdb_handle->username;
+            $variant->push_var(Context->new_env_var(DBI_PASS => $tdb_handle->password))
+                if defined $tdb_handle->password;
+        }
+
+        # XXX would be nice to be able to use $handle->key
+        my $suffix = (@tdb_handles > 1) ? ++$seqn : undef;
+        add_settings(\%settings, $driver_variants, undef, $suffix);
+    }
 
     #warn Dumper { driver => $driver, settings => \%settings };
 
@@ -230,9 +237,11 @@ sub mkfilepath {
 }
 
 sub add_settings {
-    my ($dst, $src, $prefix) = @_;
+    my ($dst, $src, $prefix, $suffix) = @_;
     for my $src_key (keys %$src) {
-        my $dst_key = ($prefix) ? "$prefix-$src_key" : $src_key;
+        my $dst_key = $src_key;
+        $dst_key = "$prefix-$dst_key" if defined $prefix;
+        $dst_key = "$dst_key-$suffix" if defined $suffix;
         croak "Test variant setting key '$dst_key' already exists"
             if exists $dst->{$dst_key};
         $dst->{$dst_key} = $src->{$src_key};
