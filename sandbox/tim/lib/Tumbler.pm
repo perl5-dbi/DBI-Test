@@ -31,29 +31,26 @@ sub tumbler {                              # this code is generic
     # at and below this point in the tree of variants
     $leaf = dclone($leaf);
 
+    # call the current provider to supply the variants
+    # returns empty if all tests in the current context should be skipped
+    # returns a single (possibly nil/empty/dummy) variant if there are
+    # no actual variations needed.
     my %variants = $current_provider->($context, $leaf);
 
-    if (not %variants) {
+    # for each variant in turn, call the next level of provider
+    # with the name and value of the variant appended to the
+    # path and context.
 
-        # no variants at this level so continue to next level of provider
+    for my $name (sort keys %variants) {
 
-        return tumbler(\@providers, $leaf, $consumer, $path, $context);
+        tumbler(
+            \@providers, $leaf, $consumer,
+            [ @$path,   $name            ],
+            $context->new($context, $variants{$name}),
+        );
     }
-    else {
 
-        # for each variant in turn, call the next level of provider
-        # with the name and value of the variant appended to the
-        # path and context.
-
-        for my $name (sort keys %variants) {
-
-            tumbler(
-                \@providers, $leaf, $consumer,
-                [ @$path,   $name            ],
-                $context->new($context, $variants{$name}),
-            );
-        }
-    }
+    return;
 }
 
 1;

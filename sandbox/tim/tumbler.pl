@@ -127,20 +127,22 @@ sub dbi_settings_provider {
 sub driver_settings_provider {
     my ($context, $tests) = @_;
 
-    # return a setting for each driver that can be tested in the current context
+    # return a DBI_DRIVER env var setting for each driver that can be tested in
+    # the current context
 
     require DBI;
-    my @drivers = DBI->available_drivers; # Test::Database->list_drivers("available");
+    my @drivers = DBI->available_drivers();
 
-    # these filters could be implemented as per-driver test plugins
-    # that respond to the $context
-
-    # filter out proxy drivers
+    # filter out proxy drivers here - they should be handled by
+    # dbi_settings_provider() creating contexts using DBI_AUTOPROXY
     @drivers = grep { !driver_is_proxy($_) } @drivers;
 
     # filter out non-pureperl drivers if testing with DBI_PUREPERL
     @drivers = grep { driver_is_pureperl($_) } @drivers
         if $context->get_env_var('DBI_PUREPERL');
+
+    # the dbd_settings_provider looks after filtering out drivers
+    # for which we don't have a way to connect to a database
 
     # convert list of drivers into list of DBI_DRIVER env var settings
     return map { $_ => Context->new_env_var(DBI_DRIVER => $_) } @drivers;
@@ -154,6 +156,16 @@ sub dbd_settings_provider {
 
     my $driver = $context->get_env_var('DBI_DRIVER');
     my %settings;
+
+    require Test::Database;
+    my @tdb_handles = Test::Database->handles({ dbd => $driver });
+    unless (@tdb_handles) {
+        warn "skipped $driver - no Test::Database config\n";
+        return;
+    }
+
+    warn "Warning: $driver has multiple Test::Database config - only first used currently"
+        if @tdb_handles > 1;
 
     # this would dispatch to plug-ins based on the value of
 
@@ -204,8 +216,11 @@ sub driver_is_pureperl { # XXX
 
 sub driver_is_proxy { # XXX
     my ($driver) = @_;
-    return 1 if $driver eq 'Gofer' || $driver eq 'Proxy';
-    return 0;
+    return {
+        Gofer => 1,
+        Proxy => 1,
+        Multiplex => 1,
+    }->{$driver};
 }
 
 sub quote_value_as_perl {
