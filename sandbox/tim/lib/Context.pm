@@ -9,10 +9,11 @@ use strict;
 
 sub new { my $class = shift; $class = ref $class if ref $class; return bless [ @_ ], $class }
 
+# XXX should ensure that a given type+name is only output once (the latest one)
 sub pre_code  { my $self = shift; return join "", map { $_->pre_code  } reverse @$self }
 sub post_code { my $self = shift; return join "", map { $_->post_code } reverse @$self }
 
-sub get_var { # search backwards through list of settings
+sub get_var { # search backwards through list of settings, stop at first match
     my ($self, $name, $type) = @_;
     for my $setting (reverse @$self) {
         next unless $setting;
@@ -22,11 +23,17 @@ sub get_var { # search backwards through list of settings
     return;
 }
 
+sub push_var { # add a var to an existing config
+    my ($self, $var) = @_;
+    push @$self, $var;
+    return;
+}
+
 sub get_env_var { my ($self, $name) = @_; return $self->get_var($name, 'Context::EnvVar') }
 sub get_our_var { my ($self, $name) = @_; return $self->get_var($name, 'Context::OurVar') }
 
-sub new_env_var { shift; Context::EnvVar->new(@_) }
-sub new_our_var { shift; Context::OurVar->new(@_) }
+sub new_env_var { shift->new( Context::EnvVar->new(@_) ) }
+sub new_our_var { shift->new( Context::OurVar->new(@_) ) }
 
 
 {
