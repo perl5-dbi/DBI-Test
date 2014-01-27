@@ -178,12 +178,12 @@ sub dbd_settings_provider {
         # XXX this would dispatch to plug-ins based on the value of $driver
         # for now we just call a hard-coded sub
         if ($driver eq 'DBM') {
-            $driver_variants = dbd_dbm_settings_provider($context, $tests);
+            $driver_variants = dbd_dbm_settings_provider($context, $tests, $tdb_handle);
         }
         else {
-            # if the driver has no variants then we supply a dummy one
-            # (else this context would be skipped)
-            $driver_variants = { Default => Context->new };
+            $driver_variants = {
+                Default => Context->new_env_var(DBI_DSN => $tdb_handle->dsn)
+            };
         }
 
         # add DBI_USER and DBI_PASS into each variant, if defined
@@ -197,6 +197,9 @@ sub dbd_settings_provider {
         # XXX would be nice to be able to use $handle->key
         my $suffix = (@tdb_handles > 1) ? ++$seqn : undef;
         add_settings(\%settings, $driver_variants, undef, $suffix);
+
+        warn sprintf "%s has %d variants for DSN %s\n",
+            $driver, scalar keys %$driver_variants, $tdb_handle->dsn;
     }
 
     #warn Dumper { driver => $driver, settings => \%settings };
@@ -251,7 +254,7 @@ sub add_settings {
 
 
 sub dbd_dbm_settings_provider {
-    my ($context, $tests) = @_;
+    my ($context, $tests, $tdb_handle) = @_;
 
     my @mldbm_types = ("");
     if ( eval { require 'MLDBM.pm' } ) {
