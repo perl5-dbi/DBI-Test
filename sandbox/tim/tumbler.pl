@@ -66,10 +66,12 @@ sub get_templates {
     my %templates;
 
     find(sub {
-        next unless m/\.t$/;
+        next unless m/\.pm$/;
         my $name = $File::Find::name;
         $name =~ s!\Q$template_dir\E/!!;
-        $templates{ $name } = { require => $File::Find::name };
+        $name =~ s!\.pm$!!;
+        $name =~ s!/!::!g;
+        $templates{ $name } = { lib => $template_dir, module => $name };
     }, $template_dir);
 
     return \%templates;
@@ -88,14 +90,23 @@ sub write_test_file {
     for my $testname (sort keys %$leaf) {
         my $testinfo = $leaf->{$testname};
 
+        $testname .= ".t" unless $testname =~ m/\.t$/;
         mkfilepath("$dirpath/$testname");
 
         warn "Write $dirpath/$testname\n";
         open my $fh, ">", "$dirpath/$testname";
-        print $fh "#!perl\n";
+        print $fh qq{#!perl\n};
+        print $fh qq{use lib "lib";\n};
         print $fh $pre;
-        print $fh "require '$testinfo->{require}';\n" if $testinfo->{require};
-        print $fh "$testinfo->{code}\n" if $testinfo->{code};
+        print $fh "require '$testinfo->{require}';\n"
+            if $testinfo->{require};
+        print $fh "$testinfo->{code}\n"
+            if $testinfo->{code};
+        if ($testinfo->{module}) {
+            print $fh "use lib '$testinfo->{lib}';\n" if $testinfo->{lib};
+            print $fh "require $testinfo->{module};\n";
+            print $fh "$testinfo->{module}->run_tests;\n";
+        }
         print $fh $post;
         close $fh;
     }
@@ -283,8 +294,8 @@ sub dbd_dbm_settings_provider {
 
     # Example of adding a test, in a subdir, for a single driver.
     # Because $tests is cloned in the tumbler this extra item doesn't
-    # affect other contexts, but does affect all variants in this context.
-    $tests->{"deeper/path/example.t"} = { code => "use Test::More; pass(); done_testing;" };
+    # affect other contexts (but does affect all variants in this context).
+    $tests->{'plugin/ExampleExtraTests.t'} = { lib => 'plug', module => 'DBM::ExampleExtraTests' };
 
     return \%settings;
 }
