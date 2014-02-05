@@ -172,9 +172,11 @@ sub dbd_settings_provider {
     my $driver = $context->get_env_var('DBI_DRIVER');
 
     require Test::Database;
+    warn_once("Using Test::Database config ".Test::Database::_rcfile()."\n");
+
     my @tdb_handles = Test::Database->handles({ dbd => $driver });
     unless (@tdb_handles) {
-        warn "Skipped $driver driver - no Test::Database dsn config using the $driver driver\n";
+        warn_once("Skipped $driver driver - no Test::Database dsn config using the $driver driver\n");
         return;
     }
     #warn Dumper \@tdb_handles;
@@ -221,6 +223,11 @@ sub dbd_settings_provider {
 
 # --- supporting functions/hacks/stubs
 
+
+sub warn_once {
+    my ($msg) = @_;
+    warn $msg unless our $warn_once_seen_msg->{$msg}++;
+}
 
 sub driver_is_pureperl { # XXX
     my ($driver) = @_;
