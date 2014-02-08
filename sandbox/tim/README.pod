@@ -160,6 +160,11 @@ that return 'fixtures' (see below). Each method has a specific name, like
 C<get_ro_stmt_select_1r2c_si>, and a corresponding definition of what the
 expected behaviour of that fixture is. The definitions are quite strict.
 
+If a driver can't support a given fixture definition in the current context
+then the fixture provider for that driver should return undef. The caller will
+then skip the tests that relied on that fixture.  Naturally tests should be
+written to use the simplest fixture possible.
+
 TODO Document and evolve a naming convention for fixture provider methods.
 
 
