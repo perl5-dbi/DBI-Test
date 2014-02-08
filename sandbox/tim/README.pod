@@ -1,0 +1,176 @@
+=head1 NAME
+
+DBIT Prototype - testbed for exploring and experimenting with ideas
+
+=head1 SYNOPSIS
+
+    rm -rf out* && perl tumbler.pl && prove -j4 -sr out
+
+=head1 DESCRIPTION
+
+The tumbler.pl script scans a directory tree of 'input tests' and generates a
+directory tree of 'output tests' which can be executed (in parallel and/or
+shuffled) by prove.
+
+The in/ directory holds input tests and the out/ directory holds the generated tests.
+If there's an existing old/ directory it's renamed with "-$epoch_time" appended.
+
+The generated tests are thin wrappers around the input tests which vary the
+values of a number of contextual settings (e.g. environment variables) in a
+range of combinations.
+
+The contextual settings are divided into three groups: DBI, Driver, DBD.
+Each group can generate a number of settings combinations for whatever the
+current value of the previous group settings. Somewhat like a three-tumbler
+combination lock.
+
+=over 4
+
+=item DBI
+
+    DBI_PUREPERL
+    DBI_AUTOPROXY
+
+Typically the combinations generated here are just:
+
+    Default        - no environment variables set
+    pureperl       - DBI_PUREPERL=2
+    gofer          - DBI_AUTOPROXY set to use DBD::Gofer
+    pureperl_gofer - combines pureperl and gofer
+
+=item Driver
+
+    DBI_DRIVER
+
+For each of the possible </DBI> setting combinations generated above, multiple
+variants of DBI_DRIVER will be generated.
+
+The values are those returned from the C<<DBI->available_drivers>> method, with
+proxy drivers removed.  Also, if DBI_PUREPERL is set then non-pureperl drivers
+are removed.
+
+=item DBD
+
+    DBI_DSN
+    DBI_USER
+    DBI_PASS
+
+For each of the possible </DBI> setting combinations and L</Driver> setting
+combinations generated above, multiple variants of DBI_DSN etc. will be
+generated.
+
+The values for DBI_DSN, DBI_USER and DBI_PASS are derived from the handles
+returned by L<Test::Database> via the call:
+
+    my @handles = Test::Database->handles({ dbd => $DBI_DRIVER });
+
+If there are no Test::Database C<dsn> configurations defined for a given DBI_DRIVER
+then a warning will be generated and that driver will be skipped.o
+
+Note that Test::Database is able to generate test handles for some drivers,
+like L<DBD::SQLite> and L<DBD::DBM>, automatically, without a config file.
+
+Plugins (in future) might generate multiple variations for DBI_DSN by, for
+example, adding attribute settings to test different modes of the driver.
+For example, for DBI_DRIVER "DBM" the generated DBI_DSN variants might look like:
+
+    "dbi::mldbm_type=...,dbm_type=..."
+
+=back
+
+Typically I<many> output tests will be generated for each input test.
+
+DBD-level plugins may also arrange to include extra tests just for particular drivers.
+
+
+=head1 INTERNAL INFORMATION
+
+=head2 Tumbler
+
+TODO Needs a plugin mechanism, e.g. abstract out dbd_dbm_settings_provider()
+
+=head2 Test Module Interface
+
+The input tests are implemented as modules. Each generated test script simply
+sets environment variables, loads the module, and then calls:
+
+    $module_name->run_tests;
+
+Note that that is the entire interface.  The test module is free to implement
+that method in whatever way it likes. The method is expected to generate
+standard test output using modules like L<Test::More>.
+
+=head2 Input Tests
+
+TODO We probably need a naming convention for these. For now I'm using:
+
+    in/DBIT_dbh_ro/GetInfo.pm
+    in/DBIT_sth_ro/BasicPrepareExecuteSelect.pm
+
+The 'ro' (and 'rw' in future) are to distinguish tests that only use read-only
+fixtures from those that require read-write access to teh database.
+
+=head2 Test Module Implementation
+
+An experimental L<DBITestCaseBase> class is provided to act as a base class for
+test modules.  Test modules do not have to use it.
+
+The DBITestCaseBase class provides a C<run_tests> methods that instanciates an
+object of that class and then calls a setup method, a method which finds and calls
+test methods, and finally a teardown method.
+
+[Currently method name introspection isn't implemented, so test modules
+need to implement a get_subtest_method_names() method that just returns a list
+of method names to be called. It's expected that a method naming convention
+will be adopted to avoid the need for that.]
+
+The setup method connects to the database simply using C<<DBI->connect()>>
+with no arguments, which means that the environment variables set in the
+generated test script are used.  The database handle is stored as an attribute
+of the test object.
+
+The setup method also instanciates a 'fixture provider' object (see below) for
+the database handle and stores that as an attribute of the test object.
+
+This arrangement makes it easy for a test module to run tests multiple times
+with different arguments to the test object instanciation. For example:
+
+    sub run_tests {
+        $class->SUPER::run_tests( ...arguments... );
+        $class->SUPER::run_tests( ...arguments... );
+        $class->SUPER::run_tests( ...arguments... );
+    }
+
+The test methods are called on the test object instances. They are invoked via
+Test::More::subtest() so that they can call C<plan skip_all> to skip all the
+tests in that method if desired. This is typically used if the current driver
+config doesn't support the fixture (see below) that the test method needs.
+
+
+=head2 Fixture Provider
+
+An experimental L<FixtureProvider> class is provided to act as an interface for
+providing fixtures (e.g. database data and SQL statements) for tests to use.
+
+The FixtureProvider class loads a corresponding C<FixtureProvider::$DBI_DRIVER>
+and instanciates an instance of it, passing in the database handle.
+
+The returned fixture provider object is expected to provide a number of methods
+that return 'fixtures' (see below). Each method has a specific name, like
+C<get_ro_stmt_select_1r2c_si>, and a corresponding definition of what the
+expected behaviour of that fixture is. The definitions are quite strict.
+
+TODO Document and evolve a naming convention for fixture provider methods.
+
+
+=head2 Fixture
+
+A fixture object is returned by a method call on a fixture provider object.
+A typical fixture object has a C<statement> method that returns the statement
+value to be passed to the DBI C<prepare> method.
+
+When the fixture object was created by the fixture provider it may have created
+a temporary table in the database and loaded data into it. If so the fixture
+object will have a destructor that will drop the temporary table.
+
+=cut

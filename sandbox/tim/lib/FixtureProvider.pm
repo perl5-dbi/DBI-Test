@@ -19,7 +19,10 @@ sub new {
 
     (my $class_file = $class) =~ s{::}{/}g;
     $class_file .= ".pm";
-    eval "require $class" or warn $@;
+    unless (eval "require $class") {
+        warn $@;
+        # could create a fake class that's a subclass of FixtureProvider::GenericBase_SQL
+    }
 
     my $fp = $class->new(%args);
 

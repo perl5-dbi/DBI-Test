@@ -35,7 +35,7 @@ $| = 1;
 my $input_dir  = "in";
 my $output_dir = "out";
 
-my $templates = get_templates($input_dir);
+my $input_tests = get_input_tests($input_dir);
 
 rename $output_dir, $output_dir.'-'.time
     if -d $output_dir;
@@ -48,8 +48,8 @@ tumbler(
         \&dbd_settings_provider,
     ],
 
-    # templates
-    $templates,
+    # data
+    $input_tests,
 
     # consumer
     \&write_test_file,
@@ -61,9 +61,9 @@ tumbler(
 );
 
 
-sub get_templates {
+sub get_input_tests {
     my ($template_dir) = @_;
-    my %templates;
+    my %input_tests;
 
     find(sub {
         next unless m/\.pm$/;
@@ -71,13 +71,13 @@ sub get_templates {
         $name =~ s!\Q$template_dir\E/!!;    # remove prefix to just get relative path
         $name =~ s!\.pm$!!;                 # remove the .pm suffix
         (my $module_name = $name) =~ s!/!::!g; # convert to module name
-        $templates{ $name } = {             # use relative path as key
+        $input_tests{ $name } = {             # use relative path as key
             lib => $template_dir,
             module => $module_name,
         };
     }, $template_dir);
 
-    return \%templates;
+    return \%input_tests;
 }
 
 
@@ -297,6 +297,8 @@ sub dbd_dbm_settings_provider {
 
             # to pass the mldbm_type and dbm_type we use the DBI_DSN env var
             # because the DBD portion is empty the DBI still uses DBI_DRIVER env var
+            # XXX really this ought to parse tdb_handle->dsn and append the
+            # settings to it so as to preserve any settings in the Test::Database config.
             my $DBI_DSN = "dbi::mldbm_type=$mldbm_type,dbm_type=$dbm_type";
             $settings{$tag} = Context->new_env_var(DBI_DSN => $DBI_DSN);
         }
