@@ -80,7 +80,7 @@ sub setup {
         my $fixture_provider = $self->fixture_provider_hook->($self);
         $self->fixture_provider($fixture_provider);
     }
-    can_ok $self->fixture_provider, qw(get_ro_select_kv_1row_stmt);
+    isa_ok $self->fixture_provider, 'FixtureProvider::GenericBase';
 
     pass "base setup";
     return;

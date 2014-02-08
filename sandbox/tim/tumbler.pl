@@ -70,8 +70,8 @@ sub get_templates {
         my $name = $File::Find::name;
         $name =~ s!\Q$template_dir\E/!!;
         $name =~ s!\.pm$!!;
-        $name =~ s!/!::!g;
-        $templates{ $name } = { lib => $template_dir, module => $name };
+        (my $module_name = $name) =~ s!/!::!g;
+        $templates{ $name } = { lib => $template_dir, module => $module_name };
     }, $template_dir);
 
     return \%templates;
