@@ -68,10 +68,13 @@ sub get_templates {
     find(sub {
         next unless m/\.pm$/;
         my $name = $File::Find::name;
-        $name =~ s!\Q$template_dir\E/!!;
-        $name =~ s!\.pm$!!;
-        (my $module_name = $name) =~ s!/!::!g;
-        $templates{ $name } = { lib => $template_dir, module => $module_name };
+        $name =~ s!\Q$template_dir\E/!!;    # remove prefix to just get relative path
+        $name =~ s!\.pm$!!;                 # remove the .pm suffix
+        (my $module_name = $name) =~ s!/!::!g; # convert to module name
+        $templates{ $name } = {             # use relative path as key
+            lib => $template_dir,
+            module => $module_name,
+        };
     }, $template_dir);
 
     return \%templates;
