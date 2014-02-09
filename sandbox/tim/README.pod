@@ -42,7 +42,7 @@ Typically the combinations generated here are just:
 
     DBI_DRIVER
 
-For each of the possible </DBI> setting combinations generated above, multiple
+For each of the possible L</DBI> setting combinations generated above, multiple
 variants of DBI_DRIVER will be generated.
 
 The values are those returned from the DBI->available_drivers() method, with
@@ -55,7 +55,7 @@ are removed.
     DBI_USER
     DBI_PASS
 
-For each of the possible </DBI> setting combinations and L</Driver> setting
+For each of the possible L</DBI> setting combinations and L</Driver> setting
 combinations generated above, multiple variants of DBI_DSN etc. will be
 generated.
 
@@ -65,7 +65,7 @@ returned by L<Test::Database> via the call:
     my @handles = Test::Database->handles({ dbd => $DBI_DRIVER });
 
 If there are no Test::Database C<dsn> configurations defined for a given DBI_DRIVER
-then a warning will be generated and that driver will be skipped.o
+then a warning will be generated and that driver will be skipped.
 
 Note that Test::Database is able to generate test handles for some drivers,
 like L<DBD::SQLite> and L<DBD::DBM>, automatically, without a config file.
@@ -89,6 +89,8 @@ DBD-level plugins may also arrange to include extra tests just for particular dr
 
 TODO Needs a plugin mechanism, e.g. abstract out dbd_dbm_settings_provider()
 
+TODO Add support for more drivers to Test::Database (eg non-server DBDs).
+
 =head2 Test Module Interface
 
 The input tests are implemented as modules. Each generated test script simply
@@ -97,18 +99,23 @@ sets environment variables, loads the module, and then calls:
     $module_name->run_tests;
 
 Note that that is the entire interface.  The test module is free to implement
-that method in whatever way it likes. The method is expected to generate
+that method in whatever way it likes. The method is simply expected to generate
 standard test output using modules like L<Test::More>.
 
 =head2 Input Tests
 
-TODO We probably need a naming convention for these. For now I'm using:
+TODO We need a naming convention for these. For now I'm using:
 
     in/DBIT_dbh_ro/GetInfo.pm
     in/DBIT_sth_ro/BasicPrepareExecuteSelect.pm
 
 The 'ro' (and 'rw' in future) are to distinguish tests that only use read-only
-fixtures from those that require read-write access to teh database.
+fixtures from those that require read-write access to the database.
+
+TODO Work out how we distribute, package, install and use tests from multiple sources.
+
+TODO Start formulating a list of likely test files in order to help identify
+what kind of fixtures will be needed, and to help define naming conventions.
 
 =head2 Test Module Implementation
 
@@ -119,10 +126,10 @@ The DBITestCaseBase class provides a C<run_tests> methods that instanciates an
 object of that class and then calls a setup method, a method which finds and calls
 test methods, and finally a teardown method.
 
-[Currently method name introspection isn't implemented, so test modules
+TODO Currently method name introspection isn't implemented, so test modules
 need to implement a get_subtest_method_names() method that just returns a list
 of method names to be called. It's expected that a method naming convention
-will be adopted to avoid the need for that.]
+will be adopted to avoid the need for that.
 
 The setup method connects to the database simply using DBI->connect()
 with no arguments, which means that the environment variables set in the
@@ -155,17 +162,32 @@ providing fixtures (e.g. database data and SQL statements) for tests to use.
 The FixtureProvider class loads a corresponding C<FixtureProvider::$DBI_DRIVER>
 and instanciates an instance of it, passing in the database handle.
 
+TODO if there's no driver-specific class then warn and default to L<FixtureProvider::GenericBase_SQL>.
+
 The returned fixture provider object is expected to provide a number of methods
 that return 'fixtures' (see below). Each method has a specific name, like
 C<get_ro_stmt_select_1r2c_si>, and a corresponding definition of what the
-expected behaviour of that fixture is. The definitions are quite strict.
+expected behaviour of that fixture is. The definitions are quite strict
+as they're effectively a contract between the fixture provider and the test.
 
 If a driver can't support a given fixture definition in the current context
 then the fixture provider for that driver should return undef. The caller will
-then skip the tests that relied on that fixture.  Naturally tests should be
-written to use the simplest fixture possible.
+then skip the tests that relied on that fixture.
+
+Naturally tests should be written to use the simplest fixture that provides
+sufficient functionality for what the test script is trying to test.
+
+TODO Start making a list of fixtures needed to satisfy the needs of existing
+kinds of tests. For example: errors (and warn & info), transactions, unicode,
+FKs, param handling, etc.
+
+TODO Outline a standardized way of describing the 'contract' supported by a
+fixture i.e. what a fixture provider for a given driver has to honor and what a
+test script can assume/expect.
 
 TODO Document and evolve a naming convention for fixture provider methods.
+
+TODO Create more per-driver fixture provider subclasses (hopefully mostly empty).
 
 
 =head2 Fixture
@@ -177,5 +199,9 @@ value to be passed to the DBI C<prepare> method.
 When the fixture object was created by the fixture provider it may have created
 a temporary table in the database and loaded data into it. If so the fixture
 object will have a destructor that will drop the temporary table.
+
+TODO Extend fixtures to support a sequence of statements?
+
+=head1 Other TODOs
 
 =cut
