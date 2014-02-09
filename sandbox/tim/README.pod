@@ -45,7 +45,7 @@ Typically the combinations generated here are just:
 For each of the possible </DBI> setting combinations generated above, multiple
 variants of DBI_DRIVER will be generated.
 
-The values are those returned from the C<<DBI->available_drivers>> method, with
+The values are those returned from the DBI->available_drivers() method, with
 proxy drivers removed.  Also, if DBI_PUREPERL is set then non-pureperl drivers
 are removed.
 
@@ -124,7 +124,7 @@ need to implement a get_subtest_method_names() method that just returns a list
 of method names to be called. It's expected that a method naming convention
 will be adopted to avoid the need for that.]
 
-The setup method connects to the database simply using C<<DBI->connect()>>
+The setup method connects to the database simply using DBI->connect()
 with no arguments, which means that the environment variables set in the
 generated test script are used.  The database handle is stored as an attribute
 of the test object.
