@@ -4,6 +4,16 @@ DBIT Prototype - testbed for exploring and experimenting with ideas
 
 =head1 SYNOPSIS
 
+Prerequisites:
+
+    # Test::Database breaks with YAML::Tiny 1.58+ so pre-install a slightly older one
+    # https://rt.cpan.org/Ticket/Display.html?id=92916
+    cpanm http://cpan.metacpan.org/authors/id/E/ET/ETHER/YAML-Tiny-1.56.tar.gz
+
+    cpanm DBI Test::Database Class::Tiny # plus DBD::SQLite for example
+
+Run:
+
     rm -rf out* && perl tumbler.pl && prove -j4 -sr out
 
 =head1 DESCRIPTION
@@ -178,8 +188,14 @@ Naturally tests should be written to use the simplest fixture that provides
 sufficient functionality for what the test script is trying to test.
 
 TODO Start making a list of fixtures needed to satisfy the needs of existing
-kinds of tests. For example: errors (and warn & info), transactions, unicode,
-FKs, param handling, etc.
+kinds of tests. For example:
+    errors (and warn & info)
+    error state sharing between handles and propagation up to parent handle
+    transactions
+    unicode,
+    FKs and other schema info methods
+    param handling
+    etc etc!
 
 TODO Outline a standardized way of describing the 'contract' supported by a
 fixture i.e. what a fixture provider for a given driver has to honor and what a
@@ -201,6 +217,13 @@ a temporary table in the database and loaded data into it. If so the fixture
 object will have a destructor that will drop the temporary table.
 
 TODO Extend fixtures to support a sequence of statements?
+
+TODO Find some way to let a fixture set $TODO in the callers package for Test::More?
+Would be a handy way for a driver-specific fixture provider to express known-bugs
+instead of being forced to return undef so loose the benefit of testing.
+We'd probably need to mandate that the lifespan of fixture objects (per calling class)
+should be non-overlapping.
+
 
 =head1 Other TODOs
 
