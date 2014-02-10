@@ -18,6 +18,10 @@ Run:
 
     rm -rf out* && perl tumbler.pl && prove -j4 -sr out
 
+Extend:
+
+    perldoc Test::Database # and write a config file with dsn= entries
+
 =head1 DESCRIPTION
 
 The tumbler.pl script scans a directory tree of 'input tests' and generates a
