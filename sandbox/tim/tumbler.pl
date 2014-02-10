@@ -25,6 +25,7 @@ use File::Find;
 use File::Path;
 use File::Basename;
 use Data::Dumper;
+use Carp qw(croak);
 
 use lib 'lib';
 
