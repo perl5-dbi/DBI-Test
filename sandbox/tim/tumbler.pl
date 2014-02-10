@@ -25,6 +25,7 @@ use File::Find;
 use File::Path;
 use File::Basename;
 use Data::Dumper;
+use Carp qw(croak);
 
 use lib 'lib';
 
@@ -59,6 +60,14 @@ tumbler(
     # context
     Context->new,
 );
+
+die "No tests written!\n"
+    unless -d $output_dir;
+
+exit 0;
+
+
+# ------
 
 
 sub get_input_tests {
@@ -114,9 +123,6 @@ sub write_test_file {
         close $fh;
     }
 }
-
-
-exit 0;
 
 
 # ------
@@ -179,7 +185,7 @@ sub dbd_settings_provider {
 
     my @tdb_handles = Test::Database->handles({ dbd => $driver });
     unless (@tdb_handles) {
-        warn_once("Skipped $driver driver - no Test::Database dsn config using the $driver driver\n");
+        warn_once("Skipped DBD::$driver - no Test::Database dsn config using the $driver driver\n");
         return;
     }
     #warn Dumper \@tdb_handles;
