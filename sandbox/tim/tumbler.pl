@@ -26,6 +26,8 @@ use File::Path;
 use File::Basename;
 use Data::Dumper;
 use Carp qw(croak);
+use IPC::Open3;
+use Symbol 'gensym';
 
 use lib 'lib';
 
@@ -240,9 +242,38 @@ sub warn_once {
 
 sub driver_is_pureperl { # XXX
     my ($driver) = @_;
-    return 0 if $driver eq 'SQLite';
-    return 1;
+
+    my $cache = \our %_driver_is_pureperl_cache;
+    $cache->{$driver} = check_if_driver_is_pureperl($driver)
+        unless exists $cache->{$driver};
+
+    return $cache->{$driver};
 }
+
+sub check_if_driver_is_pureperl {
+    my ($driver) = @_;
+
+    local $ENV{DBI_PUREPERL} = 2; # force DBI to be pure-perl
+    local $ENV{DBI_DRIVER} = $driver; # just to avoid injecting name into cmd
+    my $cmd = $^X.q{ -MDBI -we 'DBI->install_driver($ENV{DBI_DRIVER}); exit 0'};
+
+    my $pid = open3(my $wtrfh, my $rdrfh, my $errfh = gensym, $cmd);
+    waitpid( $pid, 0 );
+    my $errmsg = join "\n", <$errfh>;
+
+    # if it ran ok than it's pureperl
+    return 1 if $? == 0;
+
+    # else if the error was the expected one for XS
+    # then we're sure it's not pureperl
+    return 0 if $errmsg =~ /Unable to get DBI state function/;
+
+    # we should never get here
+    warn "Can't tell if DBD::$driver is pure-perl. Loading via DBI::PurePerl failed in an unexpected way: $errmsg\n";
+
+    return 0; # assume not puerperl and let tests fail if they're going to
+}
+
 
 sub driver_is_proxy { # XXX
     my ($driver) = @_;
