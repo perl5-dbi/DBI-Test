@@ -233,4 +233,29 @@ should be non-overlapping.
 
 =head1 Other TODOs
 
+=head2 Threads
+
+Consider how we'll do thread tests. Might be another top-level variant that
+adds "use threads;" at the start of the generated .t file. That'll run all test
+scripts with "threads enabled" but no actual extra threads. Specific thread
+test files could skip_all if run with out threads loaded or run DBI thread
+tests if it is.
+
+=head2 subtest issues with threads
+
+See https://github.com/schwern/test-more/issues/388
+and https://github.com/schwern/test-more/issues/263
+
+Should we continue to use subtests when calling test methods?
+Is there a subset of subtest functionality that's safe to use?
+If not can we emulate subtest sufficiently?
+I suspect that providing an equivalent of "plan skip_all => $msg" is probably sufficient.
+We want to record what tests are skipped and why anyway as part of data recording.
+
+=head2 Data Recording
+
+Consider what data we'd like to capture during a test run.
+For example, what fixtures weren't provided (causing tests to be skipped) and
+in which contexts that happened.
+
 =cut
