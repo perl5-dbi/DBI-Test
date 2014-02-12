@@ -27,8 +27,6 @@ my $output_dir = "out";
 rename $output_dir, $output_dir.'-'.time
     if -d $output_dir;
 
-my $stash = Package::Stash->new("Context");
-$stash->add_symbol('&new_class_use', sub { shift->new( Context::UseClass->new(@_) ) } );
 
 my %tc_classes = ( MXCT => 1 );
 my $plug_dir = Cwd::abs_path( File::Spec->catdir( $FindBin::RealBin, "plug" ) );
@@ -126,14 +124,6 @@ tumbler(
 
 exit 0;
 
-sub quote_value_as_perl
-{
-    my ($value) = @_;
-    my $perl_value = Data::Dumper->new([$value])->Terse(1)->Purity(1)->Useqq(1)->Sortkeys(1)->Dump;
-    chomp $perl_value;
-    return $perl_value;
-}
-
 sub mkfilepath
 {
     my ($name) = @_;
@@ -141,28 +131,15 @@ sub mkfilepath
     mkpath($dirpath, 0) unless -d $dirpath;
 }
 
-{
-    package Context::UseClass;
-    use strictures;
-    use parent -norequire, 'Context::BaseVar';
-
-    # base class for a named value
-
-    sub pre_code {
-        my $self = shift;
-        my $perl_value = "ARRAY" eq ref($self->{value}) ? "(" . join(", ", ( map { ::quote_value_as_perl($_) } @{$self->{value}} ) ) . ")" : "";
-        return sprintf 'use $%s%s;%s', $self->{name}, $perl_value, "\n";
-    }
-
-} # Context::UseClass
-
 sub oo_implementations
 {
+    my $use_lib_setting = Context->new_module_use(lib => [File::Spec->catdir($plug_dir, "MXCT")]);
+
     my %settings = (
-        moose => Context->new( Context->new_class_use(lib => [File::Spec->catdir($plug_dir, "MXCT")]), Context->new_class_use('Moose')),
-        moops => Context->new( Context->new_class_use(lib => [File::Spec->catdir($plug_dir, "MXCT")]), Context->new_class_use('Moops')),
-        moo => Context->new( Context->new_class_use(lib => [File::Spec->catdir($plug_dir, "MXCT")]), Context->new_class_use('Moo')),
-        mo  => Context->new( Context->new_class_use(lib => [File::Spec->catdir($plug_dir, "MXCT")]), Context->new_class_use('Mo')),
+        moose => Context->new( Context->new_module_use('Moose'), $use_lib_setting),
+        moops => Context->new( Context->new_module_use('Moops'), $use_lib_setting),
+        moo   => Context->new( Context->new_module_use('Moo'), $use_lib_setting),
+        mo    => Context->new( Context->new_module_use('Mo'), $use_lib_setting),
     );
 
     return %settings;
@@ -170,11 +147,15 @@ sub oo_implementations
 
 sub moox_cooperations
 {
+    my ($context, $tests) = @_;
+
     my %settings;
     
     eval {
 	Module::Runtime::require_module('MooX::Options');
-	$settings{mxo} = Context->new( Context->new_class_use(lib => [File::Spec->catdir($plug_dir, "MXCOT")]), Context->new_class_use('MooX::Options') );
+        my $use_lib_setting = Context->new_module_use(lib => [File::Spec->catdir($plug_dir, "MXCOT")]);
+
+	$settings{mxo} = Context->new( Context->new_module_use('MooX::Options'), $use_lib_setting);
 	$tc_classes{MXCOT} = 1;
     };
     use DDP;
