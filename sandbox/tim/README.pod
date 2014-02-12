@@ -85,6 +85,7 @@ then a warning will be generated and that driver will be skipped.
 
 Note that Test::Database is able to generate test handles for some drivers,
 like L<DBD::SQLite> and L<DBD::DBM>, automatically, without a config file.
+TODO I suspect we're not cleaning up these properly.
 
 Plugins (in future) might generate multiple variations for DBI_DSN by, for
 example, adding attribute settings to test different modes of the driver.

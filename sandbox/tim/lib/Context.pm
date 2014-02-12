@@ -29,15 +29,32 @@ sub push_var { # add a var to an existing config
     return;
 }
 
-sub get_env_var { my ($self, $name) = @_; return $self->get_var($name, 'Context::EnvVar') }
-sub get_our_var { my ($self, $name) = @_; return $self->get_var($name, 'Context::OurVar') }
+sub get_env_var    { my ($self, $name) = @_; return $self->get_var($name, 'Context::EnvVar') }
+sub get_our_var    { my ($self, $name) = @_; return $self->get_var($name, 'Context::OurVar') }
+sub get_module_use { my ($self, $name) = @_; return $self->get_var($name, 'Context::ModuleUse') }
 
-sub new_env_var { shift->new( Context::EnvVar->new(@_) ) }
-sub new_our_var { shift->new( Context::OurVar->new(@_) ) }
+sub new_env_var    { shift->new( Context::EnvVar->new(@_) ) }
+sub new_our_var    { shift->new( Context::OurVar->new(@_) ) }
+sub new_module_use { shift->new( Context::ModuleUse->new(@_) ) }
+
+
+
+my $quote_values_as_perl = sub {
+    my @perl_values = map {
+        my $val = Data::Dumper->new([$_])->Terse(1)->Purity(1)->Useqq(1)->Sortkeys(1)->Dump;
+        chomp $val;
+        $val;
+    } @_;
+    require Carp;
+    Carp::croak("quote_values_as_perl called with multiple items in scalar context")
+        if @perl_values > 1 && !wantarray;
+    return $perl_values[0] unless wantarray;
+    return @perl_values;
+};
 
 
 {
-    package Context::BaseVar;
+    package Context::BaseItem;
     use strict;
 
     # base class for a named value
@@ -57,19 +74,19 @@ sub new_our_var { shift->new( Context::OurVar->new(@_) ) }
         return $self->{value};                  # scalar
     }
 
-} # Context::BaseVar
+} # Context::BaseItem
 
 
 {
     package Context::EnvVar;
     use strict;
-    use parent -norequire, 'Context::BaseVar';
+    use parent -norequire, 'Context::BaseItem';
 
     # subclass representing a named environment variable
 
     sub pre_code {
         my $self = shift;
-        my $perl_value = ::quote_value_as_perl($self->{value});
+        my $perl_value = $quote_values_as_perl->($self->{value});
         return sprintf '$ENV{%s} = %s;%s', $self->{name}, $perl_value, "\n";
     }
 
@@ -84,16 +101,32 @@ sub new_our_var { shift->new( Context::OurVar->new(@_) ) }
 {
     package Context::OurVar;
     use strict;
-    use parent -norequire, 'Context::BaseVar';
+    use parent -norequire, 'Context::BaseItem';
 
     # subclass representing a named 'our' variable
 
     sub pre_code {
         my $self = shift;
-        my $perl_value = ::quote_value_as_perl($self->{value});
+        my $perl_value = $quote_values_as_perl->($self->{value});
         return sprintf 'our $%s = %s;%s', $self->{name}, $perl_value, "\n";
     }
 
 } # Context::OurVar
+
+
+{
+    package Context::ModuleUse;
+    use strict;
+    use parent -norequire, 'Context::BaseItem';
+
+    # subclass representing 'use $name (@$value)'
+
+    sub pre_code {
+        my $self = shift;
+        my @imports = $quote_values_as_perl->(@{$self->{value}});
+        return sprintf 'use %s (%s);%s', $self->{name}, join(", ", @imports), "\n";
+    }
+
+} # Context::ModuleUse
 
 1;

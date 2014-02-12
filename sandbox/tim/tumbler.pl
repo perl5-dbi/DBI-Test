@@ -28,6 +28,7 @@ use Data::Dumper;
 use Carp qw(croak);
 use IPC::Open3;
 use Symbol 'gensym';
+use Config qw(%Config);
 
 use lib 'lib';
 
@@ -145,6 +146,18 @@ sub dbi_settings_provider {
 
     # add a 'null setting' that tests plain DBI with default environment
     $settings{Default} = Context->new;
+
+    # if threads are supported then add a copy of all the existing settings
+    # with 'use threads ();' added. This is probably overkill.
+    if ($Config{useithreads}) {
+        my $thread_setting = Context->new_module_use(threads => []);
+
+        my %thread_settings = map {
+            $_ => Context->new( $settings{$_}, $thread_setting );
+        } keys %settings;
+
+        add_settings(\%settings, \%thread_settings, undef, 'thread');
+    }
 
     return %settings;
 }
@@ -271,7 +284,7 @@ sub check_if_driver_is_pureperl {
     # we should never get here
     warn "Can't tell if DBD::$driver is pure-perl. Loading via DBI::PurePerl failed in an unexpected way: $errmsg\n";
 
-    return 0; # assume not puerperl and let tests fail if they're going to
+    return 0; # assume not pureperl and let tests fail if they're going to
 }
 
 
@@ -282,13 +295,6 @@ sub driver_is_proxy { # XXX
         Proxy => 1,
         Multiplex => 1,
     }->{$driver};
-}
-
-sub quote_value_as_perl {
-    my ($value) = @_;
-    my $perl_value = Data::Dumper->new([$value])->Terse(1)->Purity(1)->Useqq(1)->Sortkeys(1)->Dump;
-    chomp $perl_value;
-    return $perl_value;
 }
 
 sub mkfilepath {
