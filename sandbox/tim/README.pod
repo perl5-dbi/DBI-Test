@@ -165,10 +165,9 @@ with different arguments to the test object instanciation. For example:
         $class->SUPER::run_tests( ...arguments... );
     }
 
-The test methods are called on the test object instances. They are invoked via
-Test::More::subtest() so that they can call C<plan skip_all> to skip all the
-tests in that method if desired. This is typically used if the current driver
-config doesn't support the fixture (see below) that the test method needs.
+The test methods are called on the test object instances.
+If the current context doesn't support a fixture (see below) needed by the test
+method then it can simply return. Other tests methods will still be called.
 
 
 =head2 Fixture Provider
@@ -234,23 +233,10 @@ should be non-overlapping.
 
 =head1 Other TODOs
 
-=head2 Threads
+=head2 Encapsulate skip_all
 
-Consider how we'll do thread tests. Might be another top-level variant that
-adds "use threads;" at the start of the generated .t file. That'll run all test
-scripts with "threads enabled" but no actual extra threads. Specific thread
-test files could skip_all if run with out threads loaded or run DBI thread
-tests if it is.
-
-=head2 subtest issues with threads
-
-See https://github.com/schwern/test-more/issues/388
-and https://github.com/schwern/test-more/issues/263
-
-Should we continue to use subtests when calling test methods?
-Is there a subset of subtest functionality that's safe to use?
-If not can we emulate subtest sufficiently?
 I suspect that providing an equivalent of "plan skip_all => $msg" is probably sufficient.
+skip_all throws a Test::Builder::Exception object, we could catch that.
 We want to record what tests are skipped and why anyway as part of data recording.
 
 =head2 Data Recording
