@@ -30,8 +30,10 @@ sub _h_no_error {
 sub basic_prepare_execute_select_ro {
     my $self = shift;
 
-    my $fx = $self->fixture_provider->get_ro_stmt_select_1r2c_si
-        or plan skip_all => 'no get_ro_stmt_select_1r2c_si fixture';
+    my $fx = $self->fixture_provider->get_ro_stmt_select_1r2c_si;
+    # XXX this needs to be abstracted
+    return warn "aborting: no get_ro_stmt_select_1r2c_si fixture"
+        unless $fx;
 
     my $sth = $self->dbh->prepare($fx->statement);
     can_ok $sth, 'execute'

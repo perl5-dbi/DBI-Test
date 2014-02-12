@@ -13,16 +13,18 @@ use Class::Tiny {
 
     dbh => undef,
     dbi_connect_hook => sub { sub {
+        my ($self, $connect_attr) = @_;
         require DBI;
-        return DBI->connect(); # uses env vars
+        return DBI->connect(undef, undef, undef, $connect_attr); # uses env vars
     } },
 
     sth => undef,
 
     fixture_provider => undef,
     fixture_provider_hook => sub { sub {
+        my ($self, $dbh) = @_;
         require FixtureProvider;
-        return FixtureProvider->new(dbh => shift->dbh);
+        return FixtureProvider->new(dbh => $dbh || $self->dbh);
     } },
 };
 
@@ -74,22 +76,22 @@ sub setup {
         my $dbh = $self->dbi_connect_hook->($self);
         $self->dbh($dbh);
     }
-    can_ok $self->dbh, qw(err errstr state set_err prepare do disconnect);
+    die "dbh is not a subclass of DBI::db"
+        unless $self->dbh->isa('DBI::db');
 
     unless ($self->fixture_provider) {
         my $fixture_provider = $self->fixture_provider_hook->($self);
         $self->fixture_provider($fixture_provider);
     }
-    isa_ok $self->fixture_provider, 'FixtureProvider::GenericBase';
+    die "fixture_provider is not a subclass of FixtureProvider::GenericBase"
+        unless $self->fixture_provider->isa('FixtureProvider::GenericBase');
 
-    pass "base setup";
     return;
 }
 
 
 sub teardown {
     my $self = shift;
-    pass "base teardown";
     done_testing(); # XXX implicitly here or explicitly in the test module?
     return;
 }
@@ -111,7 +113,8 @@ sub _call_subtest {
     my $ref = $self->can($test_method_name)
         or croak "panic: method $test_method_name seen but doesn't exist";
 
-    subtest $test_method_name => sub { $ref->($self) };
+    #subtest $test_method_name => sub { $ref->($self) };
+    $ref->($self);
 
     return;
 }

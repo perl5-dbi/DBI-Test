@@ -5,7 +5,11 @@ use Test::More;
 use parent 'DBITestCaseBase';
 
 sub get_subtest_method_names {
-    return ();
+    return qw(foo);
+}
+
+sub foo {
+    pass '42!'
 }
 
 1;
