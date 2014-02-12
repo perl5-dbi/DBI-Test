@@ -28,6 +28,7 @@ use Data::Dumper;
 use Carp qw(croak);
 use IPC::Open3;
 use Symbol 'gensym';
+use Config qw(%Config);
 
 use lib 'lib';
 
@@ -145,6 +146,18 @@ sub dbi_settings_provider {
 
     # add a 'null setting' that tests plain DBI with default environment
     $settings{Default} = Context->new;
+
+    # if threads are supported then add a copy of all the existing settings
+    # with 'use threads ();' added. This is probably overkill.
+    if ($Config{useithreads}) {
+        my $thread_setting = Context->new_module_use(threads => []);
+
+        my %thread_settings = map {
+            $_ => Context->new( $settings{$_}, $thread_setting );
+        } keys %settings;
+
+        add_settings(\%settings, \%thread_settings, undef, 'thread');
+    }
 
     return %settings;
 }
