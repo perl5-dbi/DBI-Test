@@ -36,6 +36,15 @@ sub new_env_var { shift->new( Context::EnvVar->new(@_) ) }
 sub new_our_var { shift->new( Context::OurVar->new(@_) ) }
 
 
+
+my $quote_value_as_perl = sub {
+    my ($value) = @_;
+    my $perl_value = Data::Dumper->new([$value])->Terse(1)->Purity(1)->Useqq(1)->Sortkeys(1)->Dump;
+    chomp $perl_value;
+    return $perl_value;
+};
+
+
 {
     package Context::BaseVar;
     use strict;
@@ -69,7 +78,7 @@ sub new_our_var { shift->new( Context::OurVar->new(@_) ) }
 
     sub pre_code {
         my $self = shift;
-        my $perl_value = ::quote_value_as_perl($self->{value});
+        my $perl_value = $quote_value_as_perl->($self->{value});
         return sprintf '$ENV{%s} = %s;%s', $self->{name}, $perl_value, "\n";
     }
 
@@ -90,7 +99,7 @@ sub new_our_var { shift->new( Context::OurVar->new(@_) ) }
 
     sub pre_code {
         my $self = shift;
-        my $perl_value = ::quote_value_as_perl($self->{value});
+        my $perl_value = $quote_value_as_perl->($self->{value});
         return sprintf 'our $%s = %s;%s', $self->{name}, $perl_value, "\n";
     }
 

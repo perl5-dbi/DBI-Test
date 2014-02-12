@@ -271,7 +271,7 @@ sub check_if_driver_is_pureperl {
     # we should never get here
     warn "Can't tell if DBD::$driver is pure-perl. Loading via DBI::PurePerl failed in an unexpected way: $errmsg\n";
 
-    return 0; # assume not puerperl and let tests fail if they're going to
+    return 0; # assume not pureperl and let tests fail if they're going to
 }
 
 
@@ -282,13 +282,6 @@ sub driver_is_proxy { # XXX
         Proxy => 1,
         Multiplex => 1,
     }->{$driver};
-}
-
-sub quote_value_as_perl {
-    my ($value) = @_;
-    my $perl_value = Data::Dumper->new([$value])->Terse(1)->Purity(1)->Useqq(1)->Sortkeys(1)->Dump;
-    chomp $perl_value;
-    return $perl_value;
 }
 
 sub mkfilepath {
