@@ -18,7 +18,7 @@ use lib 'lib';
 use FindBin qw();
 
 use Context;
-use Tumbler;
+use Data::Tumbler;
 
 $| = 1;
 my $input_dir  = "in";
@@ -109,9 +109,6 @@ tumbler(
     # providers
     $providers,
 
-    # templates
-    $test_cases,
-
     # consumer
     \&write_test_file,
 
@@ -119,6 +116,8 @@ tumbler(
     [],
     # context
     Context->new,
+    # payload
+    $test_cases,
 );
 
 
@@ -147,7 +146,7 @@ sub oo_implementations
 
 sub moox_cooperations
 {
-    my ($context, $tests) = @_;
+    my ($path, $context, $tests) = @_;
 
     my %settings;
     

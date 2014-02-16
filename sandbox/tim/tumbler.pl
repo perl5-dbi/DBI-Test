@@ -33,7 +33,7 @@ use Config qw(%Config);
 use lib 'lib';
 
 use Context;
-use Tumbler;
+use Data::Tumbler;
 
 $| = 1;
 my $input_dir  = "in";
@@ -52,9 +52,6 @@ tumbler(
         \&dbd_settings_provider,
     ],
 
-    # data
-    $input_tests,
-
     # consumer
     \&write_test_file,
 
@@ -62,6 +59,8 @@ tumbler(
     [],
     # context
     Context->new,
+    # payload
+    $input_tests,
 );
 
 die "No tests written!\n"
@@ -95,15 +94,15 @@ sub get_input_tests {
 
 
 sub write_test_file {
-    my ($path, $context, $leaf) = @_;
+    my ($path, $context, $payload) = @_;
 
     my $dirpath = join "/", $output_dir, @$path;
 
     my $pre  = $context->pre_code;
     my $post = $context->post_code;
 
-    for my $testname (sort keys %$leaf) {
-        my $testinfo = $leaf->{$testname};
+    for my $testname (sort keys %$payload) {
+        my $testinfo = $payload->{$testname};
 
         $testname .= ".t" unless $testname =~ m/\.t$/;
         mkfilepath("$dirpath/$testname");
@@ -132,6 +131,7 @@ sub write_test_file {
 
 
 sub dbi_settings_provider {
+    my ($path, $context, $tests) = @_;
 
     my %settings = (
         pureperl => Context->new_env_var(DBI_PUREPERL => 2),
@@ -164,7 +164,7 @@ sub dbi_settings_provider {
 
 
 sub driver_settings_provider {
-    my ($context, $tests) = @_;
+    my ($path, $context, $tests) = @_;
 
     # return a DBI_DRIVER env var setting for each driver that can be tested in
     # the current context
@@ -189,7 +189,7 @@ sub driver_settings_provider {
 
 
 sub dbd_settings_provider {
-    my ($context, $tests) = @_;
+    my ($path, $context, $tests) = @_;
 
     # return variant settings to be tested for the current DBI_DRIVER
 
