@@ -27,6 +27,13 @@ my $output_dir = "out";
 rename $output_dir, $output_dir.'-'.time
     if -d $output_dir;
 
+my $tumbler = Data::Tumbler->new(
+    consumer => \&write_test_file,
+    add_context => sub {
+        my ($context, $item) = @_;
+        return $context->new($context, $item);
+    },
+);
 
 my %tc_classes = ( MXCT => 1 );
 my $plug_dir = Cwd::abs_path( File::Spec->catdir( $FindBin::RealBin, "plug" ) );
@@ -105,12 +112,9 @@ my $providers = [
     ];
 my $test_cases = get_test_cases($input_dir);
 
-tumbler(
+$tumbler->tumble(
     # providers
     $providers,
-
-    # consumer
-    \&write_test_file,
 
     # path
     [],

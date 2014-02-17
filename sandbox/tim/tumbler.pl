@@ -44,16 +44,22 @@ my $input_tests = get_input_tests($input_dir);
 rename $output_dir, $output_dir.'-'.time
     if -d $output_dir;
 
-tumbler(
+
+my $tumbler = Data::Tumbler->new(
+    consumer => \&write_test_file,
+    add_context => sub {
+        my ($context, $item) = @_;
+        return $context->new($context, $item);
+    },
+);
+
+$tumbler->tumble(
     # providers
     [ 
         \&dbi_settings_provider,
         \&driver_settings_provider,
         \&dbd_settings_provider,
     ],
-
-    # consumer
-    \&write_test_file,
 
     # path
     [],
