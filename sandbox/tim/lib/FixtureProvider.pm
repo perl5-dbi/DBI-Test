@@ -9,6 +9,8 @@ use Class::Tiny {
     dbh => undef,
 };
 
+my $default_fixture_provider = 'FixtureProvider::GenericBase_SQL';
+
 
 sub new {
     my ($class, %args) = @_;
@@ -20,8 +22,18 @@ sub new {
     (my $class_file = $class) =~ s{::}{/}g;
     $class_file .= ".pm";
     unless (eval "require $class") {
-        warn $@;
-        # could create a fake class that's a subclass of FixtureProvider::GenericBase_SQL
+        if ($@ =~ m/Can't locate \Q$class_file\E/) {
+            warn "No $class so using $default_fixture_provider (failures are likely)\n";
+            eval qq{
+                package $class;
+                use parent '$default_fixture_provider';
+                \$INC{'$class_file'} = __FILE__;
+            };
+            die @$ if $@;
+        }
+        else {
+            warn $@;
+        }
     }
 
     my $fp = $class->new(%args);

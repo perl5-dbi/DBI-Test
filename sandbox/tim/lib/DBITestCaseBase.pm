@@ -74,6 +74,8 @@ sub setup {
 
     unless ($self->dbh) {
         my $dbh = $self->dbi_connect_hook->($self);
+        die "DBI connect failed: $DBI::errstr"
+            unless $dbh;
         $self->dbh($dbh);
     }
     die "dbh is not a subclass of DBI::db"
