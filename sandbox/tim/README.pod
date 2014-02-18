@@ -7,7 +7,8 @@ DBIT Prototype - testbed for exploring and experimenting with ideas
 Prerequisites:
 
     # Test::Database breaks with YAML::Tiny 1.58+ so pre-install a slightly older one
-    # https://rt.cpan.org/Ticket/Display.html?id=92916
+    # else you'll get "YAML::Tiny failed to classify line ..." warnings.
+    # See https://rt.cpan.org/Ticket/Display.html?id=92916
     cpanm http://cpan.metacpan.org/authors/id/E/ET/ETHER/YAML-Tiny-1.56.tar.gz
 
     cpanm DBI Test::Database Class::Tiny # plus DBD::SQLite for example
@@ -16,11 +17,18 @@ Run:
 
     cd .../DBI-Test/sandbox/tim
 
+    perl tumbler.pl && prove -r out
+
+Once it's working for you, you can use this command to delete old output
+directories and run the tests in parallel for much faster results:
+
     rm -rf out* && perl tumbler.pl && prove -j4 -sr out
 
-Extend:
+Configure:
 
-    perldoc Test::Database # and write a config file with dsn= entries
+    perldoc Test::Database
+    ... write a config file with dsn= entries ...
+    (See tumbler.pl output for where that config file lives.)
 
 =head1 DESCRIPTION
 
