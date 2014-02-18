@@ -178,6 +178,9 @@ sub driver_settings_provider {
     require DBI;
     my @drivers = DBI->available_drivers();
 
+    # filter out broken drivers here
+    @drivers = grep { driver_is_loadable($_) } @drivers;
+
     # filter out proxy drivers here - they should be handled by
     # dbi_settings_provider() creating contexts using DBI_AUTOPROXY
     @drivers = grep { !driver_is_proxy($_) } @drivers;
@@ -269,19 +272,32 @@ sub driver_is_pureperl { # XXX
     return $cache->{$driver};
 }
 
+
+sub driver_is_loadable {
+    my ($driver) = @_;
+
+    my $cache = \our %_driver_is_loadable_cache;
+    unless (exists $cache->{$driver}) {
+        my $errmsg = $cache->{$driver} = get_driver_load_error($driver);
+        if ($errmsg) {
+            $errmsg =~ s/ \(\@INC contains: .*?\)( at .*? line \d+)?//;
+            $errmsg =~ s/\n.*//s;
+            warn "Ignoring DBD::$driver: $errmsg\n";
+        }
+    }
+
+    return ($cache->{$driver} ? 0 : 1);
+}
+
+
 sub check_if_driver_is_pureperl {
     my ($driver) = @_;
 
     local $ENV{DBI_PUREPERL} = 2; # force DBI to be pure-perl
-    local $ENV{DBI_DRIVER} = $driver; # just to avoid injecting name into cmd
-    my $cmd = $^X.q{ -MDBI -we 'DBI->install_driver($ENV{DBI_DRIVER}); exit 0'};
-
-    my $pid = open3(my $wtrfh, my $rdrfh, my $errfh = gensym, $cmd);
-    waitpid( $pid, 0 );
-    my $errmsg = join "\n", <$errfh>;
+    my $errmsg = get_driver_load_error($driver);
 
     # if it ran ok than it's pureperl
-    return 1 if $? == 0;
+    return 1 if not defined $errmsg;
 
     # else if the error was the expected one for XS
     # then we're sure it's not pureperl
@@ -291,6 +307,27 @@ sub check_if_driver_is_pureperl {
     warn "Can't tell if DBD::$driver is pure-perl. Loading via DBI::PurePerl failed in an unexpected way: $errmsg\n";
 
     return 0; # assume not pureperl and let tests fail if they're going to
+}
+
+
+sub get_driver_load_error {
+    my ($driver) = @_;
+
+    local $ENV{DBI_DRIVER} = $driver; # just to avoid injecting name into cmd
+    my $cmd = $^X.q{ -MDBI -we 'DBI->install_driver($ENV{DBI_DRIVER}); exit 0'};
+
+    my $pid = open3(my $wtrfh, my $rdrfh, my $errfh = gensym, $cmd);
+    waitpid( $pid, 0 );
+    my $errmsg = join "\n", <$errfh>;
+
+    if ($? == 0 && !$errmsg) {
+        return undef;  # typical success
+    }
+    elsif ($? == 0) {
+        warn "Loading $driver generated a warning: $errmsg\n";
+        return undef;  # treat as success here
+    }
+    return $errmsg;
 }
 
 
