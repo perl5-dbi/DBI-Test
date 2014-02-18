@@ -15,4 +15,5 @@ nytprof.out
 pm_to_blib
 *.bak
 *.swp
-sandbox/tim/out
+sandbox/*/out
+sandbox/*/out-*
