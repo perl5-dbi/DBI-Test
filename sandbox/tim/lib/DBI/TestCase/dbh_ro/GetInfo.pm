@@ -1,4 +1,4 @@
-package DBIT_dbh_ro::GetInfo;
+package DBI::TestCase::dbh_ro::GetInfo;
 
 # Test $dbh->get_info($info_type) using unambiguous $info_type values
 # ie values where ISO and ANSI agree (I'm hoping that covers all the ones we care about)

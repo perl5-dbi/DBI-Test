@@ -21,7 +21,6 @@ use Context;
 use WriteTestVariants;
 
 $| = 1;
-my $input_dir  = "in";
 my $output_dir = "out";
 
 rename $output_dir, $output_dir.'-'.time
@@ -32,53 +31,13 @@ my %tc_classes = ( MXCT => 1 );
 my $plug_dir = Cwd::abs_path( File::Spec->catdir( $FindBin::RealBin, "plug" ) );
 
 
-# XXX this WriteTestVariants subclass is a temporary hack till WriteTestVariants
-# gains some kind of plugin mechanism, or at least the hooks for one.
-{
-    package My::WriteTestVariants;
-    use parent 'WriteTestVariants';
-
-sub get_input_tests
-{
-    my ($template_dir) = @_;
-    my %templates;
-    use DDP;
-    p($plug_dir);
-    p(%tc_classes);
-    foreach my $tc_class (keys %tc_classes)
-    {
-    use DDP;
-	my %dbg = (
-		search_dirs => $plug_dir,
-		search_path => $tc_class,
-		require => 0,
-		);
-	p(%dbg);
-	my @tc_plugins = Module::Pluggable::Object->new(
-		search_dirs => $plug_dir,
-		search_path => $tc_class,
-		require => 0,
-	)->plugins;
-	p(@tc_plugins);
-	foreach my $name (@tc_plugins)
-	{
-	    my ($lib, $module) = ($1, $2) if $name =~ m/^${tc_class}::(?:(.*)::)*([^:]+)$/;
-	    $templates{$name} = { lib => $lib, tc => $tc_class, module => $module };
-	}
-    }
-
-    use DDP;
-    p(%templates);
-
-    return \%templates;
-}
-
-}
-
-my $test_writer = My::WriteTestVariants->new();
+my $test_writer = WriteTestVariants->new(
+    test_case_default_namespace => 'DBI::TestCase',
+    test_case_search_dirs => [ $plug_dir ],
+    test_case_search_path => [ keys %tc_classes ],
+);
 
 $test_writer->write_test_variants(
-    $input_dir,
     $output_dir,
     [ 
         \&oo_implementations,
@@ -86,20 +45,16 @@ $test_writer->write_test_variants(
     ],
 );
 
-
-
 exit 0;
 
 
 sub oo_implementations
 {
-    my $use_lib_setting = Context->new_module_use(lib => [File::Spec->catdir($plug_dir, "MXCT")]);
-
     my %settings = (
-        moose => Context->new( Context->new_module_use('Moose'), $use_lib_setting),
-        moops => Context->new( Context->new_module_use('Moops'), $use_lib_setting),
-        moo   => Context->new( Context->new_module_use('Moo'), $use_lib_setting),
-        mo    => Context->new( Context->new_module_use('Mo'), $use_lib_setting),
+        moose => Context->new_module_use('Moose'),
+        moops => Context->new_module_use('Moops'),
+        moo   => Context->new_module_use('Moo'),
+        mo    => Context->new_module_use('Mo'),
     );
 
     return %settings;

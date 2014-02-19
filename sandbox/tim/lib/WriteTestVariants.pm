@@ -7,6 +7,7 @@ use autodie;
 use File::Find;
 use File::Path;
 use File::Basename;
+use Module::Pluggable::Object;
 use Carp qw(croak);
 
 use lib 'lib';
@@ -14,7 +15,15 @@ use lib 'lib';
 use Context;
 use Data::Tumbler;
 
+
 use Class::Tiny {
+
+    test_case_default_namespace => sub { croak "No test_case_default_namespace specified" },
+
+    test_case_search_path => sub { [ shift->test_case_default_namespace ] },
+    test_case_search_dirs => [ ],
+    test_case_search_opts => { },
+
     initial_path => sub {
         return []
     },
@@ -32,12 +41,12 @@ use Class::Tiny {
 
 
 sub write_test_variants {
-    my ($self, $input_dir, $output_dir, $providers) = @_;
+    my ($self, $output_dir, $providers) = @_;
 
     croak "output_test_dir $output_dir already exists"
         if -d $output_dir;
 
-    my $input_tests = $self->get_input_tests($input_dir);
+    my $input_tests = $self->get_input_tests();
 
     my $tumbler = Data::Tumbler->new(
         consumer => sub {
@@ -67,23 +76,30 @@ sub write_test_variants {
 
 
 sub get_input_tests {
-    my ($self, $template_dir) = @_;
+    my ($self) = @_;
+
+    my @test_case_modules = Module::Pluggable::Object->new(
+        require => 0,
+        %{$self->test_case_search_opts},
+        search_dirs => $self->test_case_search_dirs,
+        search_path => $self->test_case_search_path,
+    )->plugins;
+
+    my $test_case_default_namespace = $self->test_case_default_namespace || '';
+    my $default_prefix_qr = qr/^\Q$test_case_default_namespace\E::/;
 
     my %input_tests;
-    my $wanted = sub {
-        return unless m/\.pm$/;
+    for my $module_name (@test_case_modules) {
 
-        my $name = $File::Find::name;
-        $name =~ s!\Q$template_dir\E/!!;    # remove prefix to just get relative path
-        $name =~ s!\.pm$!!;                 # remove the .pm suffix
-        (my $module_name = $name) =~ s!/!::!g; # convert to module name
+        my $test_name = $module_name;
+        # remove the namespace prefix for the default set of tests
+        $test_name =~ s/$default_prefix_qr//;
+        $test_name =~ s{::}{/}g;
 
-        $input_tests{ $name } = {             # use relative path as key
-            lib => $template_dir,
+        $input_tests{ $test_name } = {
             module => $module_name,
         };
-    };
-    find($wanted, $template_dir);
+    }
 
     return \%input_tests;
 }

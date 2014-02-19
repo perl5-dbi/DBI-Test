@@ -1,4 +1,4 @@
-package DBIT_dbh_ro::SelectMultiThread;
+package DBI::TestCase::dbh_ro::SelectMultiThread;
 
 use strict;
 use Config qw(%Config);

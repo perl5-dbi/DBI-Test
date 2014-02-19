@@ -33,16 +33,16 @@ use Context;
 use WriteTestVariants;
 
 $| = 1;
-my $input_dir  = "in";
 my $output_dir = "out";
 
 rename $output_dir, $output_dir.'-'.time
     if -d $output_dir;
 
-my $test_writer = WriteTestVariants->new();
+my $test_writer = WriteTestVariants->new(
+    test_case_default_namespace => 'DBI::TestCase',
+);
 
 $test_writer->write_test_variants(
-    $input_dir,
     $output_dir,
     [
         \&dbi_settings_provider,
@@ -50,9 +50,6 @@ $test_writer->write_test_variants(
         \&dbd_settings_provider,
     ]
 );
-
-die "No tests written!\n"
-    unless -d $output_dir;
 
 exit 0;
 

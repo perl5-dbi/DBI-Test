@@ -1,4 +1,4 @@
-package DBIT_sth_ro::BasicPrepareExecuteSelect;
+package DBI::TestCase::sth_ro::BasicPrepareExecuteSelect;
 
 # Test the basic prepare + execute + fetchrow sequence
 # of a valid select statement that returns 1 row.
