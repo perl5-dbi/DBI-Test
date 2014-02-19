@@ -26,7 +26,12 @@ sub _h_no_error {
     # (but log them in stats for info?)
     is $h->err, undef, "err should be undef";
     is $h->errstr, undef, "errstr should be undef";
-    is $h->state, '', "state should be empty string(?)"; # XXX not sure that's valid
+
+    # We don't test state() here. The DBI docs say:
+    # "The driver is free to return any value via state, e.g., warning codes,
+    # even if it has not declared an error by returning a true value via the
+    # "err" method described above."
+    # Elsewhere we'll test that state() is true if err is true.
 }
 
 
