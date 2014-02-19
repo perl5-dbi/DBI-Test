@@ -18,7 +18,7 @@ use lib 'lib';
 use FindBin qw();
 
 use Context;
-use Data::Tumbler;
+use WriteTestVariants;
 
 $| = 1;
 my $input_dir  = "in";
@@ -27,18 +27,18 @@ my $output_dir = "out";
 rename $output_dir, $output_dir.'-'.time
     if -d $output_dir;
 
-my $tumbler = Data::Tumbler->new(
-    consumer => \&write_test_file,
-    add_context => sub {
-        my ($context, $item) = @_;
-        return $context->new($context, $item);
-    },
-);
 
 my %tc_classes = ( MXCT => 1 );
 my $plug_dir = Cwd::abs_path( File::Spec->catdir( $FindBin::RealBin, "plug" ) );
 
-sub get_test_cases
+
+# XXX this WriteTestVariants subclass is a temporary hack till WriteTestVariants
+# gains some kind of plugin mechanism, or at least the hooks for one.
+{
+    package My::WriteTestVariants;
+    use parent 'WriteTestVariants';
+
+sub get_input_tests
 {
     my ($template_dir) = @_;
     my %templates;
@@ -73,66 +73,23 @@ sub get_test_cases
     return \%templates;
 }
 
-sub write_test_file {
-    my ($path, $context, $leaf) = @_;
-
-    my $dirpath = join "/", $output_dir, @$path;
-
-    my $pre  = $context->pre_code;
-    my $post = $context->post_code;
-
-    for my $testname (sort keys %$leaf) {
-        my $testinfo = $leaf->{$testname};
-
-        $testname .= ".t" unless $testname =~ m/\.t$/;
-        mkfilepath("$dirpath/$testname");
-
-        warn "Write $dirpath/$testname\n";
-        open my $fh, ">", "$dirpath/$testname";
-        print $fh qq{#!perl\n};
-        print $fh qq{use lib "lib";\n};
-        print $fh $pre;
-        print $fh "require '$testinfo->{require}';\n"
-            if $testinfo->{require};
-        print $fh "$testinfo->{code}\n"
-            if $testinfo->{code};
-        if ($testinfo->{module}) {
-            print $fh "use lib '$testinfo->{lib}';\n" if $testinfo->{lib};
-            print $fh "require $testinfo->{module};\n";
-            print $fh "$testinfo->{module}->run_tests;\n";
-        }
-        print $fh $post;
-        close $fh;
-    }
 }
 
-my $providers = [ 
+my $test_writer = My::WriteTestVariants->new();
+
+$test_writer->write_test_variants(
+    $input_dir,
+    $output_dir,
+    [ 
         \&oo_implementations,
         \&moox_cooperations,
-    ];
-my $test_cases = get_test_cases($input_dir);
-
-$tumbler->tumble(
-    # providers
-    $providers,
-
-    # path
-    [],
-    # context
-    Context->new,
-    # payload
-    $test_cases,
+    ],
 );
+
 
 
 exit 0;
 
-sub mkfilepath
-{
-    my ($name) = @_;
-    my $dirpath = dirname($name);
-    mkpath($dirpath, 0) unless -d $dirpath;
-}
 
 sub oo_implementations
 {
@@ -161,8 +118,9 @@ sub moox_cooperations
 	$settings{mxo} = Context->new( Context->new_module_use('MooX::Options'), $use_lib_setting);
 	$tc_classes{MXCOT} = 1;
     };
+    warn $@ if $@;
     use DDP;
-    p(%tc_classes);
+    #p(%tc_classes);
 
     return %settings;
 }

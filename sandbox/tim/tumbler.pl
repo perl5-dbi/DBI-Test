@@ -21,9 +21,6 @@ items above. E.g., some drivers can't be used if DBI_PUREPERL is true.
 
 use strict;
 use autodie;
-use File::Find;
-use File::Path;
-use File::Basename;
 use Data::Dumper;
 use Carp qw(croak);
 use IPC::Open3;
@@ -33,104 +30,31 @@ use Config qw(%Config);
 use lib 'lib';
 
 use Context;
-use Data::Tumbler;
+use WriteTestVariants;
 
 $| = 1;
 my $input_dir  = "in";
 my $output_dir = "out";
 
-my $input_tests = get_input_tests($input_dir);
-
 rename $output_dir, $output_dir.'-'.time
     if -d $output_dir;
 
+my $test_writer = WriteTestVariants->new();
 
-my $tumbler = Data::Tumbler->new(
-    consumer => \&write_test_file,
-    add_context => sub {
-        my ($context, $item) = @_;
-        return $context->new($context, $item);
-    },
-);
-
-$tumbler->tumble(
-    # providers
-    [ 
+$test_writer->write_test_variants(
+    $input_dir,
+    $output_dir,
+    [
         \&dbi_settings_provider,
         \&driver_settings_provider,
         \&dbd_settings_provider,
-    ],
-
-    # path
-    [],
-    # context
-    Context->new,
-    # payload
-    $input_tests,
+    ]
 );
 
 die "No tests written!\n"
     unless -d $output_dir;
 
 exit 0;
-
-
-# ------
-
-
-sub get_input_tests {
-    my ($template_dir) = @_;
-    my %input_tests;
-
-    find(sub {
-        next unless m/\.pm$/;
-        my $name = $File::Find::name;
-        $name =~ s!\Q$template_dir\E/!!;    # remove prefix to just get relative path
-        $name =~ s!\.pm$!!;                 # remove the .pm suffix
-        (my $module_name = $name) =~ s!/!::!g; # convert to module name
-        $input_tests{ $name } = {             # use relative path as key
-            lib => $template_dir,
-            module => $module_name,
-        };
-    }, $template_dir);
-
-    return \%input_tests;
-}
-
-
-
-sub write_test_file {
-    my ($path, $context, $payload) = @_;
-
-    my $dirpath = join "/", $output_dir, @$path;
-
-    my $pre  = $context->pre_code;
-    my $post = $context->post_code;
-
-    for my $testname (sort keys %$payload) {
-        my $testinfo = $payload->{$testname};
-
-        $testname .= ".t" unless $testname =~ m/\.t$/;
-        mkfilepath("$dirpath/$testname");
-
-        warn "Write $dirpath/$testname\n";
-        open my $fh, ">", "$dirpath/$testname";
-        print $fh qq{#!perl\n};
-        print $fh qq{use lib "lib";\n};
-        print $fh $pre;
-        print $fh "require '$testinfo->{require}';\n"
-            if $testinfo->{require};
-        print $fh "$testinfo->{code}\n"
-            if $testinfo->{code};
-        if ($testinfo->{module}) {
-            print $fh "use lib '$testinfo->{lib}';\n" if $testinfo->{lib};
-            print $fh "require $testinfo->{module};\n";
-            print $fh "$testinfo->{module}->run_tests;\n";
-        }
-        print $fh $post;
-        close $fh;
-    }
-}
 
 
 # ------
@@ -340,11 +264,6 @@ sub driver_is_proxy { # XXX
     }->{$driver};
 }
 
-sub mkfilepath {
-    my ($name) = @_;
-    my $dirpath = dirname($name);
-    mkpath($dirpath, 0) unless -d $dirpath;
-}
 
 sub add_settings {
     my ($dst, $src, $prefix, $suffix) = @_;

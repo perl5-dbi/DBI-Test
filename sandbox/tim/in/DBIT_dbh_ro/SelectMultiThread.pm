@@ -7,6 +7,8 @@ use Test::More;
 use base 'DBITestCaseBase';
 
 
+my $threads = 4;
+
 sub setup {
 
     plan skip_all => "threads not supported"
@@ -18,6 +20,9 @@ sub setup {
     require DBI;
 
     shift->SUPER::setup(@_);
+
+    # use an explicit plan here as protection against thread-induced strangeness
+    plan tests => 4 + 6 * $threads;
 }
 
 
@@ -28,10 +33,6 @@ sub get_subtest_method_names {
 
 sub test_with_threads {
     my ($test) = @_;
-
-    # use an explicit plan here as protection against thread-induced strangeness
-    my $threads = 4;
-    plan tests => 4 + 6 * $threads;
 
     # alter a DBI global - we'll check it has the same value in threads
     $DBI::neat_maxlen = 12345;
@@ -45,9 +46,10 @@ sub test_with_threads {
 
     # start multiple threads, each running the test subroutine 
     my @thr;
-    push @thr, threads->create( sub { _test_a_thread($test) } )
-            or die "thread->create failed ($!)"
-        foreach (1..$threads);
+    foreach (1..$threads) {
+        push @thr, threads->create( sub { _test_a_thread($test) } )
+            or die "thread->create failed ($!)";
+    }
 
     # join all the threads
     foreach my $thread (@thr) {
