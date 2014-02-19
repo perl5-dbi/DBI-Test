@@ -93,18 +93,23 @@ sub get_input_tests {
 sub write_test_file {
     my ($self, $path, $context, $input_tests, $output_dir) = @_;
 
-    my $dirpath = join "/", $output_dir, @$path;
+    my $base_dir_path = join "/", $output_dir, @$path;
 
+    # note that $testname can include a subdirectory path
     for my $testname (sort keys %$input_tests) {
         my $testinfo = $input_tests->{$testname};
 
         $testname .= ".t" unless $testname =~ m/\.t$/;
-        warn "Writing $dirpath/$testname\n";
+        my $full_path = "$base_dir_path/$testname";
+        croak "$full_path already exists" if -e $full_path;
+        warn "Writing $full_path\n";
 
         my $test_script = $self->get_test_file_body($context, $testinfo);
 
-        mkfilepath("$dirpath/$testname");
-        open my $fh, ">", "$dirpath/$testname";
+        my $full_dir_path = dirname($full_path);
+        mkpath($full_dir_path, 0) unless -d $full_dir_path;
+
+        open my $fh, ">", $full_path;
         print $fh $test_script;
         close $fh;
     }
@@ -143,12 +148,6 @@ sub get_test_file_body {
     return join "", @body;
 }
 
-
-sub mkfilepath {
-    my ($name) = @_;
-    my $dirpath = dirname($name);
-    mkpath($dirpath, 0) unless -d $dirpath;
-}
 
 
 1;
