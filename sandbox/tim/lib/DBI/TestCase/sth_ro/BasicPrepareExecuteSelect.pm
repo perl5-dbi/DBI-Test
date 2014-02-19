@@ -19,11 +19,14 @@ use parent 'DBITestCaseBase';
 sub _h_no_error {
     my ($self, $h) = @_;
 
+    # make failures appear at the calling location
+    local $Test::Builder::Level = $Test::Builder::Level + 1;
+
     # XXX allow info and warn states to pass?
     # (but log them in stats for info?)
-    is $h->err, undef, '$h->err';
-    is $h->errstr, undef, '$h->errstr';
-    is $h->state, '', '$h->state';
+    is $h->err, undef, "err should be undef";
+    is $h->errstr, undef, "errstr should be undef";
+    is $h->state, '', "state should be empty string(?)"; # XXX not sure that's valid
 }
 
 
