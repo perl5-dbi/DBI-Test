@@ -21,9 +21,9 @@ sub _h_no_error {
 
     # XXX allow info and warn states to pass?
     # (but log them in stats for info?)
-    is $h->err, undef;
-    is $h->errstr, undef;
-    is $h->state, '';
+    is $h->err, undef, '$h->err';
+    is $h->errstr, undef, '$h->errstr';
+    is $h->state, '', '$h->state';
 }
 
 
