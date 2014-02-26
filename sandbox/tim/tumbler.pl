@@ -60,19 +60,23 @@ exit 0;
 sub dbi_settings_provider {
     my ($path, $context, $tests) = @_;
 
-    my %settings = (
-        pureperl => Context->new_env_var(DBI_PUREPERL => 2),
-        gofer    => Context->new_env_var(DBI_AUTOPROXY => 'dbi:Gofer:transport=null;policy=pedantic'),
-    );
+    my %proxies;
+    $proxies{gofer} = Context->new_env_var(DBI_AUTOPROXY => 'dbi:Gofer:transport=null;policy=pedantic');
+    $proxies{multi} = Context->new_env_var(DBI_AUTOPROXY => 'dbi:Multi:')
+        if eval { require DBD::Multi }; # XXX untested
 
-    # Add combinations:
-    #add_settings(\%settings, get_combinations(%settings));
-    # In this case returns one extra key-value pair for pureperl+gofer
-    # so we'll do that manually for now:
-    $settings{pureperl_gofer} = Context->new( $settings{pureperl}, $settings{gofer} );
+    my %settings;
+    $settings{Default}  = Context->new; # a 'null setting' with default environment
+    $settings{pureperl} = Context->new_env_var(DBI_PUREPERL => 2);
 
-    # add a 'null setting' that tests plain DBI with default environment
-    $settings{Default} = Context->new;
+    # combine proxy settings with base settings
+    my %proxy_settings;
+    while ( my ($base_name, $base_setting) = each %settings ) {
+        while ( my ($proxy_name, $proxy_setting) = each %proxies ) {
+            $proxy_settings{$base_name.'-'.$proxy_name} = Context->new( $base_setting, $proxy_setting );
+        }
+    }
+    add_settings(\%settings, \%proxy_settings);
 
     # if threads are supported then add a copy of all the existing settings
     # with 'use threads ();' added. This is probably overkill.
@@ -258,6 +262,7 @@ sub driver_is_proxy { # XXX
         Gofer => 1,
         Proxy => 1,
         Multiplex => 1,
+        Multi => 1,
     }->{$driver};
 }
 
