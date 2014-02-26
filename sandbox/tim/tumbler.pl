@@ -261,7 +261,8 @@ sub driver_is_proxy { # XXX
     }->{$driver};
 }
 
-
+# XXX O(n^2) - better use glob() as riba or better: provide via Context methods/functions for
+# sub combine_nk / cartesian
 sub add_settings {
     my ($dst, $src, $prefix, $suffix) = @_;
     for my $src_key (keys %$src) {
@@ -275,7 +276,10 @@ sub add_settings {
     return;
 }
 
-
+# XXX this should be in a separated class to be repeated when other dbm_types shall be
+#     tested by plugin
+#     Imagine a potential plugins Redis or MongoDB (without a serializer) ...
+#     This might also be useful when testing other proxy DBD's (DBD::Multi by Dan Wright?)
 sub dbd_dbm_settings_provider {
     my ($context, $tests, $tdb_handle) = @_;
 
