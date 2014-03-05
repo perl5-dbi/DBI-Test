@@ -37,6 +37,16 @@ use Class::Tiny {
             return $context->new($context, $item);
         }
     },
+
+    # If the output directory already exists when tumble() is called it'll
+    # throw an exception (and warn if it wasn't created during the run).
+    # Setting allow_dir_overwrite true disables this safety check.
+    allow_dir_overwrite => 0,
+
+    # If the test file that's about to be written already exists
+    # then write_test_file() will throw an exception.
+    # Setting allow_file_overwrite true disables this safety check.
+    allow_file_overwrite => 0,
 };
 
 
@@ -44,7 +54,7 @@ sub write_test_variants {
     my ($self, $output_dir, $providers) = @_;
 
     croak "output_test_dir $output_dir already exists"
-        if -d $output_dir;
+        if -d $output_dir and not $self->allow_dir_overwrite;
 
     my $input_tests = $self->get_input_tests();
 
@@ -64,8 +74,8 @@ sub write_test_variants {
         $input_tests, # payload
     );
 
-    die "No tests written to $output_dir!\n"
-        unless -d $output_dir;
+    warn "No tests written to $output_dir!\n"
+        if not -d $output_dir and not $self->allow_dir_overwrite;
 
     return;
 }
@@ -117,13 +127,19 @@ sub write_test_file {
 
         $testname .= ".t" unless $testname =~ m/\.t$/;
         my $full_path = "$base_dir_path/$testname";
-        croak "$full_path already exists" if -e $full_path;
+
+        if (-e $full_path) {
+            croak "$full_path already exists!\n"
+                unless $self->allow_file_overwrite;
+        }
+
         warn "Writing $full_path\n";
 
         my $test_script = $self->get_test_file_body($context, $testinfo);
 
         my $full_dir_path = dirname($full_path);
-        mkpath($full_dir_path, 0) unless -d $full_dir_path;
+        mkpath($full_dir_path, 0)
+            unless -d $full_dir_path;
 
         open my $fh, ">", $full_path;
         print $fh $test_script;
