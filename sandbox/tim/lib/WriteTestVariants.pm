@@ -67,8 +67,44 @@ sub write_test_variants {
         add_context => $self->add_context,
     );
 
+    # if a provider is a namespace name instead of a code ref
+    # then replace it with a code ref that uses Module::Pluggable
+    # to load and run the provider classes in that namespace
+    my @providers = @$providers;
+    for my $provider (@providers) {
+        next if ref $provider eq 'CODE';
+
+        my @test_variant_modules = Module::Pluggable::Object->new(
+            require => 1,
+            search_path => [ $provider ],
+        )->plugins;
+        @test_variant_modules = sort @test_variant_modules;
+
+        warn sprintf "Variant providers in %s: %s\n", $provider, join(", ", map {
+            (my $n=$_) =~ s/^${provider}:://; $n
+        } @test_variant_modules);
+
+        $provider = sub {
+            my ($path, $context, $tests) = @_;
+
+            my %variants;
+            # loop over several methods as a basic way of letting plugins
+            # hook in either early or late if they need to
+            for my $method (qw(provider_initial provider provider_final)) {
+                for my $test_variant_module (@test_variant_modules) {
+                    next unless $test_variant_module->can($method);
+                    #warn "$test_variant_module $method...\n";
+                    $test_variant_module->$method($path, $context, $tests, \%variants);
+                    #warn "$test_variant_module $method: @{[ keys %variants ]}\n";
+                }
+            }
+
+            return %variants;
+        };
+    }
+
     $tumbler->tumble(
-        $providers,
+        \@providers,
         $self->initial_path,
         $self->initial_context,
         $input_tests, # payload

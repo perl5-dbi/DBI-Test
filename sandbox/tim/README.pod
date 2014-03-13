@@ -46,7 +46,7 @@ range of combinations.
 
 The contextual settings are divided into three groups: DBI, Driver, DBD.
 Each group can generate a number of settings combinations for whatever the
-current value of the previous group settings. Somewhat like a three-tumbler
+current values of the previous group settings. Somewhat like a three-tumbler
 combination lock.
 
 =over 4
@@ -56,19 +56,21 @@ combination lock.
     DBI_PUREPERL
     DBI_AUTOPROXY
 
-Typically the combinations generated here are just:
+Typical combinations generated here are:
 
     Default        - no environment variables set
     pureperl       - DBI_PUREPERL=2
     gofer          - DBI_AUTOPROXY set to use DBD::Gofer
     pureperl_gofer - combines pureperl and gofer
 
+plus extra variants for threads if your perl supports them.
+
 =item Driver
 
     DBI_DRIVER
 
 For each of the possible L</DBI> setting combinations generated above, multiple
-variants of DBI_DRIVER will be generated.
+variants of DBI_DRIVER will be generated, one for each available driver.
 
 The values are those returned from the DBI->available_drivers() method, with
 proxy drivers removed.  Also, if DBI_PUREPERL is set then non-pureperl drivers
@@ -106,7 +108,8 @@ For example, for DBI_DRIVER "DBM" the generated DBI_DSN variants might look like
 
 Typically I<many> output tests will be generated for each input test.
 
-DBD-level plugins may also arrange to include extra tests just for particular drivers.
+DBD-level plugins may also arrange to include extra tests just for particular
+drivers in particular configurations.
 
 
 =head1 INTERNAL INFORMATION
@@ -115,8 +118,8 @@ DBD-level plugins may also arrange to include extra tests just for particular dr
 
 TODO Needs a plugin mechanism for test variant generation, e.g. abstract out
 dbd_dbm_settings_provider(). Note that plugins for *test variant* generation are
-different to plugins for *test case* generation.  (Generated tests are "test
-cases" x "test variants".)
+different to plugins for *test case* provision.  (The total set of generated
+tests are "test variants" x "test cases".)
 
 TODO Add support for more drivers to Test::Database (eg non-server DBDs).
 
@@ -127,21 +130,33 @@ sets environment variables, loads the module, and then calls:
 
     $module_name->run_tests;
 
-Note that that is the entire interface.  The test module is free to implement
-that method in whatever way it likes. The method is simply expected to generate
-standard test output using modules like L<Test::More>.
+That is the entire interface.
+
+The test module is free to implement that method in whatever way it likes.
+The method is simply expected to generate standard test output using modules
+like L<Test::More>.
 
 =head2 Input Tests
 
-TODO We need a naming convention for these. For now I'm using:
+Test case modules follow this naming convention:
+
+    DBI::TestCase::(drh|dbh|sth)_(ro|rw)::...
+
+Where C<{drh|dbh|sth}> is the type of handle the tests relate to,
+and C<{ro|rw}> represents read-only, or read-write.
+
+TODO we probably need a way to distinguish tests that do or don't modify handle
+attributes after execution since that's an important limitation of DBD::Gofer.
+
+For example:
 
     DBI::TestCase::dbh_ro::GetInfo
     DBI::TestCase::sth_ro::BasicPrepareExecuteSelect
 
-The 'ro' (and 'rw' in future) are to distinguish tests that only use read-only
-fixtures from those that require read-write access to the database.
-
-TODO Work out how we namsepace, distribute, package, install and use tests from multiple sources.
+TODO Work out how we namespace, distribute, package, install and use tests from
+multiple sources.  Is reserving DBD::*::TestCase:: a good idea, or should test
+provider plugins look after that? Consider version skew between DBIT and
+third-party DBD tests.
 
 TODO Start formulating a list of likely test files in order to help identify
 what kind of fixtures will be needed, and to help define naming conventions.
@@ -178,8 +193,27 @@ with different arguments to the test object instanciation. For example:
     }
 
 The test methods are called on the test object instances.
+
 If the current context doesn't support a fixture (see below) needed by the test
 method then it can simply return. Other tests methods will still be called.
+
+    sub get_subtest_method_names { qw(my_test_foo my_test_bar) }
+
+    sub my_test_foo {
+        my $self = shift; # the test object
+
+        return if ...can't run this test in this context...;
+
+        ...tests...
+    }
+
+    sub my_test_bar {
+        my $self = shift; # the test object
+
+        return if ...can't run this test in this context...;
+
+        ...tests...
+    }
 
 =head3 Test Module Notes
 
@@ -205,6 +239,19 @@ as they're effectively a contract between the fixture provider and the test.
 If a driver can't support a given fixture definition in the current context
 then the fixture provider for that driver should return undef. The caller will
 then skip the tests that relied on that fixture.
+
+    sub get_subtest_method_names { qw(basic_prepare_execute_select_ro) }
+
+    sub basic_prepare_execute_select_ro {
+        my $self = shift;
+
+        my $fx = $self->fixture_provider->get_ro_stmt_select_1r2c_si;
+        return warn "aborting: no get_ro_stmt_select_1r2c_si fixture"
+            unless $fx;
+
+        my $sth = $self->dbh->prepare($fx->statement);
+        ...tests...
+    }
 
 Naturally tests should be written to use the simplest fixture that provides
 sufficient functionality for what the test script is trying to test.
