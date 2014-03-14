@@ -18,16 +18,10 @@ use Data::Tumbler;
 
 use Class::Tiny {
 
-    test_case_default_namespace => sub { croak "No test_case_default_namespace specified" },
-
-    test_case_search_path => sub { [ shift->test_case_default_namespace ] },
-    test_case_search_dirs => [ ],
-    test_case_search_opts => { },
-
-    initial_path => sub {
+    initial_tumble_path => sub {
         return []
     },
-    initial_context => sub {
+    initial_tumble_context => sub {
         use Context;
         return Context->new
     },
@@ -51,31 +45,30 @@ use Class::Tiny {
 
 
 sub write_test_variants {
-    my ($self, $output_dir, $providers) = @_;
+    my ($self, %args) = @_;
+    
+    my $search_path = delete $args{search_path}
+        or croak "search_path not specified";
+    my $search_dirs = delete $args{search_dirs};
+    my $variant_providers = delete $args{variant_providers}
+        or croak "variant_providers not specified";
+    my $output_dir = delete $args{output_dir}
+        or croak "output_dir not specified";
 
-    croak "output_test_dir $output_dir already exists"
+    croak "write_test_variants: $output_dir already exists"
         if -d $output_dir and not $self->allow_dir_overwrite;
-
-    my $input_tests = $self->get_input_tests();
-
-    my $tumbler = Data::Tumbler->new(
-        consumer => sub {
-            my ($path, $context, $payload) = @_;
-            # payload is a clone of input_tests possibly modified by providers
-            $self->write_test_file($path, $context, $payload, $output_dir);
-        },
-        add_context => $self->add_context,
-    );
 
     # if a provider is a namespace name instead of a code ref
     # then replace it with a code ref that uses Module::Pluggable
     # to load and run the provider classes in that namespace
-    my @providers = @$providers;
+    my @providers = @$variant_providers;
     for my $provider (@providers) {
         next if ref $provider eq 'CODE';
 
         my @test_variant_modules = Module::Pluggable::Object->new(
             require => 1,
+            on_require_error     => sub { croak "@_" },
+            on_instantiate_error => sub { croak "@_" },
             search_path => [ $provider ],
         )->plugins;
         @test_variant_modules = sort @test_variant_modules;
@@ -103,10 +96,24 @@ sub write_test_variants {
         };
     }
 
+    my $input_tests = $self->get_input_tests({
+        search_dirs => $search_dirs,
+        search_path => $search_path,
+    });
+
+    my $tumbler = Data::Tumbler->new(
+        consumer => sub {
+            my ($path, $context, $payload) = @_;
+            # payload is a clone of input_tests possibly modified by providers
+            $self->write_test_file($path, $context, $payload, $output_dir);
+        },
+        add_context => $self->add_context,
+    );
+
     $tumbler->tumble(
         \@providers,
-        $self->initial_path,
-        $self->initial_context,
+        $self->initial_tumble_path,
+        $self->initial_tumble_context,
         $input_tests, # payload
     );
 
@@ -122,25 +129,28 @@ sub write_test_variants {
 
 
 sub get_input_tests {
-    my ($self) = @_;
+    my ($self, $search_opts) = @_;
+
+    my $namespaces = $search_opts->{search_path}
+        or croak "search_path not specified";
+    my $namespaces_regex = join "|", map { quotemeta($_) } @$namespaces;
+    my $namespaces_qr    = qr/^($namespaces_regex)::/;
 
     my @test_case_modules = Module::Pluggable::Object->new(
         require => 0,
-        %{$self->test_case_search_opts},
-        search_dirs => $self->test_case_search_dirs,
-        search_path => $self->test_case_search_path,
+        %$search_opts,
     )->plugins;
-
-    my $test_case_default_namespace = $self->test_case_default_namespace || '';
-    my $default_prefix_qr = qr/^\Q$test_case_default_namespace\E::/;
 
     my %input_tests;
     for my $module_name (@test_case_modules) {
 
+        # map module name, without the namespace prefix, to a dir path
         my $test_name = $module_name;
-        # remove the namespace prefix for the default set of tests
-        $test_name =~ s/$default_prefix_qr//;
+        $test_name =~ s/$namespaces_qr//;
         $test_name =~ s{::}{/}g;
+
+        die "Test name $test_name already seen ($module_name)"
+            if $input_tests{ $test_name };
 
         $input_tests{ $test_name } = {
             module => $module_name,

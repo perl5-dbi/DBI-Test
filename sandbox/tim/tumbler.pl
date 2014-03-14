@@ -6,7 +6,6 @@ use Getopt::Long;
 
 use lib 'lib';
 
-use Context;
 use WriteTestVariants;
 
 $| = 1;
@@ -15,17 +14,18 @@ my $output_dir = "out";
 rename $output_dir, $output_dir.'-'.time
     if -d $output_dir;
 
-my $test_writer = WriteTestVariants->new(
-    test_case_default_namespace => 'DBI::TestCase',
-);
+my $test_writer = WriteTestVariants->new();
 
 $test_writer->write_test_variants(
-    $output_dir,
-    [
+    search_path => [
+        'DBI::TestCase'
+    ],
+    variant_providers => [
         "DBI::Test::VariantDBI",
         "DBI::Test::VariantDriver",
         "DBI::Test::VariantDBD",
-    ]
+    ],
+    output_dir => $output_dir,
 );
 
 exit 0;
