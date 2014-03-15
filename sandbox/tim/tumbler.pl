@@ -6,7 +6,7 @@ use Getopt::Long;
 
 use lib 'lib';
 
-use WriteTestVariants;
+use Test::WriteVariants;
 
 $| = 1;
 my $output_dir = "out";
@@ -14,7 +14,7 @@ my $output_dir = "out";
 rename $output_dir, $output_dir.'-'.time
     if -d $output_dir;
 
-my $test_writer = WriteTestVariants->new();
+my $test_writer = Test::WriteVariants->new();
 
 $test_writer->write_test_variants(
     search_path => [

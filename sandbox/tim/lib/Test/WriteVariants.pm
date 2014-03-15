@@ -1,4 +1,4 @@
-package WriteTestVariants;
+package Test::WriteVariants;
 
 use strict;
 use warnings;
@@ -46,7 +46,7 @@ use Class::Tiny {
 
 sub write_test_variants {
     my ($self, %args) = @_;
-    
+
     my $search_path = delete $args{search_path}
         or croak "search_path not specified";
     my $search_dirs = delete $args{search_dirs};
@@ -136,6 +136,8 @@ sub get_input_tests {
     my $namespaces_regex = join "|", map { quotemeta($_) } @$namespaces;
     my $namespaces_qr    = qr/^($namespaces_regex)::/;
 
+    # XXX also find .t files?
+
     my @test_case_modules = Module::Pluggable::Object->new(
         require => 0,
         %$search_opts,
@@ -147,6 +149,7 @@ sub get_input_tests {
         # map module name, without the namespace prefix, to a dir path
         my $test_name = $module_name;
         $test_name =~ s/$namespaces_qr//;
+        $test_name =~ s{[^\w:]+}{_}g;
         $test_name =~ s{::}{/}g;
 
         die "Test name $test_name already seen ($module_name)"
