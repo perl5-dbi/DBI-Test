@@ -37,7 +37,7 @@ sub provider {
             # XXX really this ought to parse tdb_handle->dsn and append the
             # settings to it so as to preserve any settings in the Test::Database config.
             my $DBI_DSN = "dbi::mldbm_type=$mldbm_type,dbm_type=$dbm_type";
-            $settings{$tag} = Context->new_env_var(DBI_DSN => $DBI_DSN);
+            $settings{$tag} = $context->new_env_var(DBI_DSN => $DBI_DSN);
         }
     }
     add_variants($variants, \%settings);
@@ -45,7 +45,12 @@ sub provider {
     # Example of adding a test, in a subdir, for a single driver.
     # Because $tests is cloned in the tumbler this extra item doesn't
     # affect other contexts (but does affect all variants in this context).
-    $tests->{'plugin/ExampleExtraTests.t'} = { lib => 'plug', module => 'DBM::ExampleExtraTests' };
+    #$tests->{'plugin/ExampleExtraTests.t'} = { lib => 'plug', module => 'DBM::ExampleExtraTests' };
+    #
+    # $self->find_input_test_modules(
+    #   search_path => [ 'DBD::DBM::TestCases' ],
+    #   input_tests => $tests,
+    # );
 
     return;
 }

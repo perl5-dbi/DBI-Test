@@ -42,9 +42,9 @@ sub provider {
             my $suffix = ++$seqn;
 
             my %settings;
-            $settings{"$driver-$suffix"} = Context->new(
-                Context->new_env_var(DBI_DRIVER => $driver),
-                Context->new_meta_info(tdb_handle => $tdb_handle),
+            $settings{"$driver-$suffix"} = $context->new(
+                $context->new_env_var(DBI_DRIVER => $driver),
+                $context->new_meta_info(tdb_handle => $tdb_handle),
             );
 
             add_variants($variants, \%settings);

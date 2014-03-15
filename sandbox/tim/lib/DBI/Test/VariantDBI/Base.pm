@@ -7,8 +7,8 @@ sub provider {
     my ($self, $path, $context, $tests, $variants) = @_;
 
     add_variants($variants, {
-        Default  => Context->new, # a 'null setting' with default environment
-        pureperl => Context->new_env_var(DBI_PUREPERL => 2),
+        Default  => $context->new, # a 'null setting' with default environment
+        pureperl => $context->new_env_var(DBI_PUREPERL => 2),
     });
 }
 
@@ -22,8 +22,8 @@ sub provider {
     my ($self, $path, $context, $tests, $variants) = @_;
 
     my %proxies;
-    $proxies{gofer} = Context->new_env_var(DBI_AUTOPROXY => 'dbi:Gofer:transport=null;policy=pedantic');
-    $proxies{multi} = Context->new_env_var(DBI_AUTOPROXY => 'dbi:Multi:')
+    $proxies{gofer} = $context->new_env_var(DBI_AUTOPROXY => 'dbi:Gofer:transport=null;policy=pedantic');
+    $proxies{multi} = $context->new_env_var(DBI_AUTOPROXY => 'dbi:Multi:')
         if eval { require DBD::Multi }; # XXX untested
 
     duplicate_variants_with_extra_settings($variants, \%proxies);
@@ -46,7 +46,7 @@ sub provider {
     return unless $Config{useithreads};
 
     duplicate_variants_with_extra_settings($variants, {
-        thread => Context->new_module_use(threads => []),
+        thread => $context->new_module_use(threads => []),
     });
 
     return;

@@ -30,9 +30,10 @@ sub duplicate_variants_with_extra_settings {
     my ($dst, $extras) = @_;
 
     for my $dst_name (keys %$dst) {
+        my $dst_context = $dst->{$dst_name};
 
         my %extra_settings = map {
-            $_ => Context->new( $dst->{$dst_name}, $extras->{$_} )
+            $_ => $dst_context->new_composite( $dst_context, $extras->{$_} )
         } keys %$extras;
 
         add_variants($dst, \%extra_settings, $dst_name, undef);
