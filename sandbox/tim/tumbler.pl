@@ -19,6 +19,7 @@ my $test_writer = Test::WriteVariants->new();
 $test_writer->write_test_variants(
     input_tests => $test_writer->find_input_test_modules(
         search_path => [ 'DBI::TestCase' ],
+        test_prefix => '',
     ),
     variant_providers => [
         "DBI::Test::VariantDBI",

@@ -19,7 +19,7 @@ sub provider_initial {
         $context->new_meta_info(tdb_handle => $tdb_handle),
     );
 
-    # add DBI_USER and DBI_PASS into each variant, if defined
+    # add DBI_USER and DBI_PASS if defined
     $default_context->push_var($context->new_env_var(DBI_USER => $tdb_handle->username))
         if defined $tdb_handle->username;
     $default_context->push_var($context->new_env_var(DBI_PASS => $tdb_handle->password))

@@ -47,10 +47,10 @@ sub provider {
     # affect other contexts (but does affect all variants in this context).
     #$tests->{'plugin/ExampleExtraTests.t'} = { lib => 'plug', module => 'DBM::ExampleExtraTests' };
     #
-    # $self->find_input_test_modules(
-    #   search_path => [ 'DBD::DBM::TestCases' ],
-    #   input_tests => $tests,
-    # );
+    $self->find_input_test_modules(
+       search_path => [ 'DBD::DBM::TestCase' ],
+       input_tests => $tests,
+    );
 
     return;
 }
