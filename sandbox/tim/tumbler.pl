@@ -6,7 +6,7 @@ use Getopt::Long;
 
 use lib 'lib';
 
-use Test::WriteVariants 0.001;
+use Test::WriteVariants 0.002;
 
 $| = 1;
 my $output_dir = "out";

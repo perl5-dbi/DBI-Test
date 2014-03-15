@@ -1,32 +1,43 @@
-package DBITestCaseBase;
+package DBI::Test::CaseBase;
 
 # This is all very rough, experimental, and may change completely
 
-use strict;
+use Moo;
 
 use Test::More;
 
 use Try::Tiny;
 use Carp qw(croak);
 
-use Class::Tiny {
+has dbh => (
+    is => 'rw',
+);
 
-    dbh => undef,
-    dbi_connect_hook => sub { sub {
+has dbi_connect_hook => (
+    is => 'rw',
+    default => sub { sub {
         my ($self, $connect_attr) = @_;
         require DBI;
         return DBI->connect(undef, undef, undef, $connect_attr); # uses env vars
-    } },
+    } }
+);
 
-    sth => undef,
+has sth => (
+    is => 'rw',
+);
 
-    fixture_provider => undef,
-    fixture_provider_hook => sub { sub {
+has fixture_provider => (
+    is => 'rw',
+);
+
+has fixture_provider_hook => (
+    is => 'rw',
+    default => sub { sub {
         my ($self, $dbh) = @_;
-        require FixtureProvider;
-        return FixtureProvider->new(dbh => $dbh || $self->dbh);
+        require FixtureProvider::GenericBase;
+        return FixtureProvider::GenericBase->get_fixture_provider_for_dbh(dbh => $dbh || $self->dbh);
     } },
-};
+);
 
 
 =head2 run_tests
@@ -85,7 +96,7 @@ sub setup {
         my $fixture_provider = $self->fixture_provider_hook->($self);
         $self->fixture_provider($fixture_provider);
     }
-    die "fixture_provider is not a subclass of FixtureProvider::GenericBase"
+    die "fixture_provider is not a subclass of FixtureProvider::GenericBase ".$self->fixture_provider
         unless $self->fixture_provider->isa('FixtureProvider::GenericBase');
 
     return;

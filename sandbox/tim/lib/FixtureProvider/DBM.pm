@@ -1,9 +1,10 @@
 package FixtureProvider::DBM;
 
-use strict;
-use warnings;
+use Moo;
 
-use parent 'FixtureProvider::GenericBase_SQL';
+extends 'FixtureProvider::GenericBase_SQL';
+
+use DBI::Test::Fixture;
 
 
 sub get_ro_stmt_select_1r2c_si {
@@ -21,7 +22,7 @@ sub get_ro_stmt_select_1r2c_si_kV {
     $dbh->do("create table $table_name (k text, V integer)");
     $dbh->do("insert into $table_name values ('foo', 42)");
 
-    return Fixture->new(
+    return DBI::Test::Fixture->new(
         statement => "select k, V from $table_name",
         demolish => sub {
             $self->dbh->do("drop table $table_name");

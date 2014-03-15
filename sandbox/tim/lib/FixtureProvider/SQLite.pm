@@ -1,5 +1,7 @@
 package FixtureProvider::SQLite;
 
-use parent 'FixtureProvider::GenericBase_SQL';
+use Moo;
+
+extends 'FixtureProvider::GenericBase_SQL';
 
 1;

@@ -1,8 +1,10 @@
-package DBM::ExampleExtraTests;
+package DBD::DBM::TestCase::ExampleExtraTests;
 
-use strict;
+use Moo;
+
+extends 'DBI::Test::CaseBase';
+
 use Test::More;
-use parent 'DBITestCaseBase';
 
 sub get_subtest_method_names {
     return qw(foo);

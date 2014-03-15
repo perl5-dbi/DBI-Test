@@ -4,7 +4,7 @@ use strict;
 use Config qw(%Config);
 use Test::More;
 
-use base 'DBITestCaseBase';
+use base 'DBI::Test::CaseBase';
 
 
 my $threads = 4;

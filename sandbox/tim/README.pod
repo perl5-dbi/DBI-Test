@@ -153,20 +153,20 @@ For example:
     DBI::TestCase::dbh_ro::GetInfo
     DBI::TestCase::sth_ro::BasicPrepareExecuteSelect
 
+TODO Start formulating a list of likely test files in order to help identify
+what kind of fixtures will be needed, and to help define naming conventions.
+
 TODO Work out how we namespace, distribute, package, install and use tests from
 multiple sources.  Is reserving DBD::*::TestCase:: a good idea, or should test
 provider plugins look after that? Consider version skew between DBIT and
 third-party DBD tests.
 
-TODO Start formulating a list of likely test files in order to help identify
-what kind of fixtures will be needed, and to help define naming conventions.
-
 =head2 Test Module Implementation
 
-An experimental L<DBITestCaseBase> class is provided to act as a base class for
+An experimental L<DBI::Test::CaseBase> class is provided to act as a base class for
 test modules.  Test modules do not have to use it.
 
-The DBITestCaseBase class provides a C<run_tests> methods that instanciates an
+The DBI::Test::CaseBase class provides a C<run_tests> methods that instanciates an
 object of that class and then calls a C<setup> method, a method which finds and calls
 test methods, and finally a C<teardown> method.
 

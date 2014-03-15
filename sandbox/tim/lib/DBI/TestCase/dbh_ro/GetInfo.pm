@@ -8,7 +8,7 @@ package DBI::TestCase::dbh_ro::GetInfo;
 
 use strict;
 use Test::More;
-use parent 'DBITestCaseBase';
+use parent 'DBI::Test::CaseBase';
 
 
 use DBI::Const::GetInfoType; # used here only for diagnostics

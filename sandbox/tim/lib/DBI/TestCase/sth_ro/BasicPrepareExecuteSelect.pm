@@ -13,7 +13,7 @@ package DBI::TestCase::sth_ro::BasicPrepareExecuteSelect;
 
 use strict;
 use Test::More;
-use parent 'DBITestCaseBase';
+use parent 'DBI::Test::CaseBase';
 
 
 sub _h_no_error {

@@ -1,13 +1,12 @@
 package FixtureProvider::GenericBase_SQL;
 
-use strict;
-use warnings;
+use Moo;
 
-use parent 'FixtureProvider::GenericBase';
+extends 'FixtureProvider::GenericBase';
 
 use Carp qw(croak);
 
-use Fixture;
+use DBI::Test::Fixture;
 
 
 sub get_ro_stmt_select_1r2c_si {
@@ -16,7 +15,7 @@ sub get_ro_stmt_select_1r2c_si {
     # 42, respectively.
     # No other assumptions (eg about column names or specific types etc).
     # This fixture is the basis for most of the core sth tests.
-    return Fixture->new(
+    return DBI::Test::Fixture->new(
         statement => "select 'foo', 42"
     );
 }
@@ -27,7 +26,7 @@ sub get_ro_stmt_select_1r2c_si_kV {
     # handles cases).
     # This fixture is used to test $sth->{NAME} and related features like
     # fetchrow_hashref.
-    return Fixture->new(
+    return DBI::Test::Fixture->new(
         statement => "select 'foo' as k, 42 as V"
     );
 }
