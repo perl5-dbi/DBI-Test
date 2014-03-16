@@ -1,4 +1,4 @@
-package FixtureProvider::GenericBase;
+package DBI::Test::FixtureProvider::GenericBase;
 
 use Moo;
 
@@ -9,7 +9,8 @@ has dbh => (
 );
 
 
-my $default_fixture_provider = 'FixtureProvider::GenericBase_SQL';
+(my $default_fixture_provider = __PACKAGE__)
+    =~ s/::\w+$/::GenericSQL/;
 
 
 sub get_fixture_provider_for_dbh {

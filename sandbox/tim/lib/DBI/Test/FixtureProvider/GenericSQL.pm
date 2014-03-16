@@ -1,8 +1,8 @@
-package FixtureProvider::GenericBase_SQL;
+package DBI::Test::FixtureProvider::GenericSQL;
 
 use Moo;
 
-extends 'FixtureProvider::GenericBase';
+extends 'DBI::Test::FixtureProvider::GenericBase';
 
 use Carp qw(croak);
 

@@ -2,18 +2,19 @@ package DBI::Test::VariantDSN::Base;
 
 use strict;
 
+use Test::Database;
 use DBI::Test::VariantUtil qw(add_variants warn_once);
 
 
 sub provider_initial {
     my ($self, $path, $context, $tests, $variants) = @_;
 
-    # return variant for each available DSN for current DBI_DRIVER
+    # return variant for available Test::Database handle
 
     my $driver = $context->get_env_var('DBI_DRIVER');
 
     my @tdb_handles = Test::Database->handles({ dbd => $driver })
-        or die("DBD::$driver - no Test::Database dsn config using the $driver driver\n");
+        or die("panic: no Test::Database handles for $driver - should not get here");
 
     my $seqn = 0;
     for my $tdb_handle (@tdb_handles) {

@@ -1,8 +1,8 @@
-package FixtureProvider::DBM;
+package DBI::Test::FixtureProvider::DBM;
 
 use Moo;
 
-extends 'FixtureProvider::GenericBase_SQL';
+extends 'DBI::Test::FixtureProvider::GenericSQL';
 
 use DBI::Test::Fixture;
 
