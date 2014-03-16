@@ -1,10 +1,9 @@
 package DBI::TestCase::dbh_ro::SelectMultiThread;
 
-use strict;
-use Config qw(%Config);
-use Test::More;
-
+use Test::Most;
+use DBI::Test::CheckUtil;
 use base 'DBI::Test::CaseBase';
+use Config qw(%Config);
 
 
 my $threads = 4;
@@ -80,7 +79,7 @@ sub _test_a_thread {
 
     # use the parent's dbi_connect_hook to get a thread-local $dbh
     my $dbh = $self->_connect;
-    isa_ok( $dbh, 'DBI::db' );
+    dbh_ok $dbh;
     isnt($dbh, $self->dbh, 'new $dbh should be different from parent dbh');
  
     # use the parent's fixture_provider_hook but our thread-local $dbh

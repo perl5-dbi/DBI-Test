@@ -11,18 +11,18 @@ Prerequisites:
     # See https://rt.cpan.org/Ticket/Display.html?id=92916
     cpanm http://cpan.metacpan.org/authors/id/E/ET/ETHER/YAML-Tiny-1.56.tar.gz
 
-    cpanm DBI Test::Database Class::Tiny # plus DBD::SQLite for example
+    cpanm DBI Test::Database Test::WriteVariants Moo # plus DBD::SQLite for example
 
 Run:
 
     cd .../DBI-Test/sandbox/tim
 
-    perl tumbler.pl && prove -r out
+    perl tumbler.pl && prove -Ilib -r out
 
 Once it's working for you, you can use this command to delete old output
 directories and run the tests in parallel for much faster results:
 
-    rm -rf out* && perl tumbler.pl && prove -j4 -sr out
+    rm -rf out* && perl tumbler.pl && prove -Ilib -j4 -sr out
 
 Configure:
 
@@ -62,8 +62,6 @@ Typical combinations generated here are:
     pureperl       - DBI_PUREPERL=2
     gofer          - DBI_AUTOPROXY set to use DBD::Gofer
     pureperl_gofer - combines pureperl and gofer
-
-plus extra variants for threads if your perl supports them.
 
 =item Driver
 
@@ -113,15 +111,6 @@ drivers in particular configurations.
 
 
 =head1 INTERNAL INFORMATION
-
-=head2 Tumbler
-
-TODO Needs a plugin mechanism for test variant generation, e.g. abstract out
-dbd_dbm_settings_provider(). Note that plugins for *test variant* generation are
-different to plugins for *test case* provision.  (The total set of generated
-tests are "test variants" x "test cases".)
-
-TODO Add support for more drivers to Test::Database (eg non-server DBDs).
 
 =head2 Test Module Interface
 
@@ -222,19 +211,25 @@ call C<plan> you should only do so from the C<setup> method.
 
 The teardown method calls done_testing() for you.
 
+=head2 Check Utilities
+
+The L<DBI::Test::CheckUtil> module exports a number of functions that implement
+DBI-specific tests using L<Test::More>.
+
 =head2 Fixture Provider
 
-An experimental L<FixtureProvider> class is provided to act as an interface for
+An experimental L<FixtureProvider::GenericBase> class is provided to act as an interface for
 providing fixtures (e.g. database data and SQL statements) for tests to use.
 
-The FixtureProvider class loads a corresponding C<FixtureProvider::$DBI_DRIVER>
+The FixtureProvider::GenericBase class loads a corresponding C<FixtureProvider::$DBI_DRIVER>
 and instanciates an instance of it, passing in the database handle.
 
 The returned fixture provider object is expected to provide a number of methods
 that return 'fixtures' (see below). Each method has a specific name, like
-C<get_ro_stmt_select_1r2c_si>, and a corresponding definition of what the
-expected behaviour of that fixture is. The definitions are quite strict
-as they're effectively a contract between the fixture provider and the test.
+C<get_ro_stmt_select_1r2c_si> that acts as an informal hint about the fixture,
+and a corresponding definition of what the expected behaviour of that fixture
+is. The definitions are quite strict as they're effectively a contract between
+the fixture provider and the test.
 
 If a driver can't support a given fixture definition in the current context
 then the fixture provider for that driver should return undef. The caller will
@@ -259,8 +254,6 @@ sufficient functionality for what the test script is trying to test.
 TODO Start making a list of fixtures needed to satisfy the needs of existing
 kinds of tests. For example:
 
-    errors (and warn & info)
-    error state sharing between handles and propagation up to parent handle
     transactions
     unicode,
     FKs and other schema info methods

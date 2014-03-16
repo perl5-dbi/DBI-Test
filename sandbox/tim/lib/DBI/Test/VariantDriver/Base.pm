@@ -38,7 +38,6 @@ sub provider {
 
         for my $tdb_handle (@tdb_handles) {
 
-            # XXX would be nice to be able to use $handle->key
             my $suffix = ++$seqn;
 
             my %settings;

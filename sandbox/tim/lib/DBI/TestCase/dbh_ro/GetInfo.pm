@@ -6,9 +6,9 @@ package DBI::TestCase::dbh_ro::GetInfo;
 #
 # http://msdn.microsoft.com/en-us/library/ms711681(v=vs.85).aspx
 
-use strict;
-use Test::More;
-use parent 'DBI::Test::CaseBase';
+use Test::Most;
+use DBI::Test::CheckUtil;
+use base 'DBI::Test::CaseBase';
 
 
 use DBI::Const::GetInfoType; # used here only for diagnostics
