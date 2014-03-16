@@ -30,26 +30,17 @@ sub provider {
 
     for my $driver (@drivers) {
 
-        my @tdb_handles = Test::Database->handles({ dbd => $driver })
-            or warn_once("Skipped DBD::$driver - no Test::Database dsn config using the $driver driver\n");
-
-        my $seqn = 0;
-        my %settings;
-
-        for my $tdb_handle (@tdb_handles) {
-
-            my $suffix = ++$seqn;
-
-            my %settings;
-            $settings{"$driver-$suffix"} = $context->new(
-                $context->new_env_var(DBI_DRIVER => $driver),
-                $context->new_meta_info(tdb_handle => $tdb_handle),
-            );
-
-            add_variants($variants, \%settings);
+        # skip drivers that Test::Database can't give us any handles for
+        my @tdb_handles = Test::Database->handles({ dbd => $driver });
+        if (not @tdb_handles) {
+            warn_once("Skipped DBD::$driver - no Test::Database config using the $driver driver\n");
+            next;
         }
-    }
 
+        add_variants($variants, {
+            $driver => $context->new_env_var(DBI_DRIVER => $driver),
+        });
+    }
 
     return;
 }

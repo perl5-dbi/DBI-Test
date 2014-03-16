@@ -6,7 +6,9 @@ use Getopt::Long;
 
 use lib 'lib';
 
-use Test::WriteVariants 0.002;
+use Test::WriteVariants 0.004;
+
+use YAML::Tiny 1.62; # XXX temp to ensure Test::Database works
 
 $| = 1;
 my $output_dir = "out";
@@ -22,9 +24,10 @@ $test_writer->write_test_variants(
         test_prefix => '',
     ),
     variant_providers => [
-        "DBI::Test::VariantDBI",
-        "DBI::Test::VariantDriver",
-        "DBI::Test::VariantDBD",
+        "DBI::Test::VariantDBI",    # pureperl, gofer etc
+        "DBI::Test::VariantDriver", # available drivers
+        "DBI::Test::VariantDSN",    # available DSNs for a DBD
+        "DBI::Test::VariantDBD",    # variant configs for a DBD+DSN
     ],
     output_dir => $output_dir,
 );

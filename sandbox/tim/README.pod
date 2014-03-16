@@ -4,14 +4,10 @@ DBIT Prototype - testbed for exploring and experimenting with ideas
 
 =head1 SYNOPSIS
 
-Prerequisites:
+Fetch/update prerequisites:
 
-    # Test::Database breaks with YAML::Tiny 1.58+ so pre-install a slightly older one
-    # else you'll get "YAML::Tiny failed to classify line ..." warnings.
-    # See https://rt.cpan.org/Ticket/Display.html?id=92916
-    cpanm http://cpan.metacpan.org/authors/id/E/ET/ETHER/YAML-Tiny-1.56.tar.gz
-
-    cpanm DBI Test::Database Test::WriteVariants Moo # plus DBD::SQLite for example
+    # YAML::Tiny 1.62+
+    cpanm YAML::Tiny DBI Test::Database Test::WriteVariants Moo # plus DBD::SQLite for example
 
 Run:
 

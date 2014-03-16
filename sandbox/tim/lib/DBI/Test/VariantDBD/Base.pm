@@ -7,29 +7,14 @@ use DBI::Test::VariantUtil qw(add_variants warn_once);
 
 sub provider_initial {
     my ($self, $path, $context, $tests, $variants) = @_;
-    # return variant settings to be tested for the current DBI_DRIVER
 
-    my $driver = $context->get_env_var('DBI_DRIVER');
+    # return variant settings to be tested for the current DSN
 
-    my $tdb_handle = $context->get_meta_info('tdb_handle')
-        or Carp::confess("panic: no tdb_handle");
-
-    my $default_context = $context->new(
-        $context->new_env_var(DBI_DSN => $tdb_handle->dsn),
-        $context->new_meta_info(tdb_handle => $tdb_handle),
-    );
-
-    # add DBI_USER and DBI_PASS if defined
-    $default_context->push_var($context->new_env_var(DBI_USER => $tdb_handle->username))
-        if defined $tdb_handle->username;
-    $default_context->push_var($context->new_env_var(DBI_PASS => $tdb_handle->password))
-        if defined $tdb_handle->password;
-
-    my $driver_variants = {
-        Default => $default_context
-    };
-
-    add_variants($variants, $driver_variants);
+    add_variants($variants, {
+        # we call this 'Plain' to distinguish it from the similar 'Default'
+        # used by the DBI variant provider
+        Plain => $context->new(),
+    });
 
     return;
 }
